@@ -5,7 +5,8 @@ prior to container sandbox execution.
 """
 
 import ast
-from typing import Any, List, Optional, Set
+from typing import List, Optional, Set
+
 from pydantic import BaseModel, Field
 
 
@@ -21,8 +22,9 @@ BLOCKED_MODULES: Set[str] = {
     # Network / exfiltration
     "socket", "urllib", "requests", "http", "ftplib", "telnetlib", "smtplib",
     "aiohttp", "httpx", "paramiko",
-    # Subprocess / execution
-    "subprocess", "pty", "multiprocessing",
+    # Subprocess / execution / reflection
+    "subprocess", "pty", "multiprocessing", "importlib", "ctypes", "inspect",
+    "posix", "nt", "signal", "shutil", "builtins",
     # Database drivers (enforce single path via Member 6 TabularEngine)
     "duckdb", "sqlite3", "psycopg2", "mysql", "sqlalchemy",
 }
@@ -35,7 +37,13 @@ BLOCKED_OS_ATTRIBUTES: Set[str] = {
 
 # Blocked built-in function names
 BLOCKED_BUILTINS: Set[str] = {
-    "eval", "exec", "__import__", "compile", "breakpoint"
+    "eval", "exec", "__import__", "compile", "breakpoint", "getattr", "setattr", "delattr", "globals", "locals"
+}
+
+# Blocked introspection / reflection attributes used in sandbox escape exploits
+BLOCKED_INTROSPECTION_ATTRIBUTES: Set[str] = {
+    "__subclasses__", "__builtins__", "__globals__", "__class__", "__base__",
+    "__bases__", "__import__", "__code__", "__reduce__", "__mro__"
 }
 
 
@@ -69,8 +77,18 @@ class ASTVisitor(ast.NodeVisitor):
                     self.issues.append(f"Blocked module import: '{node.module}'")
         self.generic_visit(node)
 
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id in ("__builtins__", "__loader__", "__spec__"):
+            self.issues.append(f"Direct access to '{node.id}' is prohibited.")
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if node.attr in BLOCKED_INTROSPECTION_ATTRIBUTES:
+            self.issues.append(f"Prohibited introspection attribute: '{node.attr}'")
+        self.generic_visit(node)
+
     def visit_Call(self, node: ast.Call) -> None:
-        # Check direct builtin calls (eval, exec, __import__)
+        # Check direct builtin calls (eval, exec, __import__, getattr, globals)
         if isinstance(node.func, ast.Name):
             if node.func.id in BLOCKED_BUILTINS:
                 self.issues.append(f"Disallowed call to built-in function: '{node.func.id}'")

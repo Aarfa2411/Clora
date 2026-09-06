@@ -5,6 +5,7 @@ to dynamically select the optimal sovereign local model.
 """
 
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from backend.models.registry import (
@@ -50,41 +51,54 @@ class IntelligentModelRouter:
         """Analyzes query to detect capability requirement, code need, and domain intent."""
         q_lower = query.lower()
 
-        # 1. Code Generation / Calculation need
-        code_triggers = [
-            "calculate", "computation", "formula", "delta", "slope", "plot", "chart",
-            "script", "python", "rms", "aggregate", "stddev", "vibration velocity",
-            "telemetry", "sensor math", "threshold excursion"
+        # 1. Explicit computational action triggers (requires deliberate calculation or scripting intent)
+        code_action_triggers = [
+            "calculate", "compute", "computation", "plot", "chart", "graph",
+            "script", "python", "sensor math", "telemetry math", "write code",
+            "execute script", "calculate delta", "compute slope", "calculate rms",
+            "aggregate data", "calculate stddev", "run simulation"
         ]
-        is_code = any(t in q_lower for t in code_triggers)
+        has_code_action = any(t in q_lower for t in code_action_triggers)
 
-        # 2. Deep Root-Cause Investigation need
+        # 2. Deep Root-Cause Investigation triggers
         rca_triggers = [
             "why", "fail", "failure", "cause", "root cause", "overheat",
             "breakdown", "incident", "trip", "spalling", "runaway"
         ]
         is_rca = any(t in q_lower for t in rca_triggers)
 
-        # 3. SOP / Procedure / Extraction need
+        # 3. SOP / Procedure / Extraction triggers
         sop_triggers = ["how to", "procedure", "sop", "steps", "start-up", "shutdown"]
         is_sop = any(t in q_lower for t in sop_triggers)
 
-        if is_code:
+        # Disambiguation:
+        # If query asks a causal/incident question (e.g., "Did delta pressure cause valve to fail?"),
+        # it is an RCA investigation unless explicitly requesting code generation / calculation.
+        if is_rca and not any(k in q_lower for k in ["calculate", "compute", "script", "plot", "write python", "run code"]):
+            task_type = "root_cause_investigation"
+            req_capability = ModelCapability.REASONING_RCA
+            reasoning = "Task involves multi-source causal investigation and failure correlation."
+            is_code = False
+        elif has_code_action:
             task_type = "code_execution"
             req_capability = ModelCapability.CODE_GENERATION
-            reasoning = "Task involves sensor mathematics, telemetry scripting, or data transformation."
+            reasoning = "Task explicitly involves sensor mathematics, telemetry scripting, or quantitative calculation."
+            is_code = True
         elif is_rca:
             task_type = "root_cause_investigation"
             req_capability = ModelCapability.REASONING_RCA
             reasoning = "Task involves multi-source causal investigation and failure correlation."
+            is_code = False
         elif is_sop:
             task_type = "sop_lookup"
             req_capability = ModelCapability.FAST_TRIAGE
             reasoning = "Task involves structured operational procedure retrieval."
+            is_code = False
         else:
             task_type = "general_knowledge"
             req_capability = ModelCapability.GENERAL
             reasoning = "Standard technical inquiry."
+            is_code = False
 
         return {
             "task_type": task_type,
@@ -206,7 +220,7 @@ class IntelligentModelRouter:
         """Calls Member 6's existing AuditLogger to record immutable SHA-256 chained entry."""
         try:
             from security.audit_trail import AuditLogger
-            log_path = self.audit_file or "demo_audit_trail.jsonl"
+            log_path = self.audit_file or "./storage/audit_trail.jsonl"
             logger = AuditLogger(log_path)
             logger.log(
                 actor_id=user_id,

@@ -40,7 +40,7 @@ def build_workflow(
         query = state.get("user_query", "")
         intent = planner.route_query(query)
         plan = planner.plan_workflow(intent)
-        
+
         # Route model dynamically
         user_id = state.get("user_id", "operator")
         user_role = state.get("user_role", "maintenance_engineer")
@@ -262,9 +262,22 @@ def build_workflow(
     graph.add_node("verify", verify_claims)
     graph.add_node("guardrail", apply_guardrails)
 
+    def should_route_to_sandbox(state: AgentState) -> str:
+        routing = state.get("model_routing", {})
+        if routing.get("task_type") == "code_execution" or state.get("code_task"):
+            return "sandbox_code"
+        return "investigate"
+
     graph.add_edge(START, "router")
     graph.add_edge("router", "retrieve")
-    graph.add_edge("retrieve", "sandbox_code")
+    graph.add_conditional_edges(
+        "retrieve",
+        should_route_to_sandbox,
+        {
+            "sandbox_code": "sandbox_code",
+            "investigate": "investigate",
+        },
+    )
     graph.add_edge("sandbox_code", "investigate")
     graph.add_edge("investigate", "synthesize")
     graph.add_edge("synthesize", "verify")

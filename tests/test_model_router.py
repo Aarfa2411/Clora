@@ -4,8 +4,8 @@ Unit tests for Intelligent Model Router.
 
 import os
 import tempfile
-import pytest
-from backend.models.registry import ModelCapability, ModelProfile, ModelRegistry
+
+from backend.models.registry import ModelCapability
 from backend.models.router import IntelligentModelRouter
 
 
@@ -27,6 +27,15 @@ class TestIntelligentModelRouter:
         assert decision.task_type == "root_cause_investigation"
         assert decision.selected_model == "qwen2.5:3b"
         assert 0.0 <= decision.capability_match_score <= 1.0
+
+    def test_rca_with_delta_keyword_not_misclassified_as_code(self):
+        router = IntelligentModelRouter()
+        # Contains 'delta' and 'fail' / 'cause' - must NOT route to code_execution
+        query = "Did the delta pressure cause the bypass valve to fail?"
+        decision = router.route_task(query)
+
+        assert decision.task_type == "root_cause_investigation"
+        assert decision.selected_model == "qwen2.5:3b"
 
     def test_match_score_strictly_bounded_in_0_1(self):
         router = IntelligentModelRouter()

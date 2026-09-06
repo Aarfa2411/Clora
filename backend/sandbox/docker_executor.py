@@ -11,7 +11,8 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -95,9 +96,9 @@ class SandboxExecutor:
         print(f"[STATUS: Executing in isolated container sandbox ({self.image_name})...]")
         t0 = time.time()
 
-        # Convert to POSIX paths for Docker volume mounting
-        in_mount = str(Path(host_in_dir).resolve()).replace("\\", "/")
-        out_mount = str(Path(host_out_dir).resolve()).replace("\\", "/")
+        # Convert to standardized POSIX paths for Docker volume mounting
+        in_mount = self._format_docker_mount_path(host_in_dir)
+        out_mount = self._format_docker_mount_path(host_out_dir)
 
         cmd = [
             "docker", "run", "--rm",
@@ -157,10 +158,33 @@ class SandboxExecutor:
                 warning=f"CONTAINER_INVOCATION_ERROR: {str(e)}",
             )
 
+    @staticmethod
+    def _format_docker_mount_path(host_path: str) -> str:
+        """Normalizes host path for Docker volume mounting across Linux, macOS, and Windows."""
+        resolved = Path(host_path).resolve()
+        posix_str = str(resolved).replace("\\", "/")
+        # On Windows, normalize drive letters (e.g. C:/Users/... -> /c/Users/...) for Docker CLI compatibility
+        if len(posix_str) >= 2 and posix_str[1] == ":":
+            drive = posix_str[0].lower()
+            return f"/{drive}{posix_str[2:]}"
+        return posix_str
+
     def _run_subprocess_dev_fallback(
         self, host_in_dir: str, host_out_dir: str, script_name: str
     ) -> ExecutionResult:
         """Dev fallback runner when Docker is not active on the development machine."""
+        allow_dev_fallback = os.getenv("ALLOW_INSECURE_DEV_FALLBACK", "true").lower() in ("true", "1", "yes")
+        if not allow_dev_fallback:
+            return ExecutionResult(
+                exit_code=1,
+                stdout="",
+                stderr="Execution blocked: Docker container isolation is required in production/strict mode (ALLOW_INSECURE_DEV_FALLBACK=false).",
+                execution_time_ms=0.0,
+                generated_files=[],
+                used_container=False,
+                warning="INSECURE_DEV_FALLBACK_PROHIBITED",
+            )
+
         warning_msg = (
             "[DEV FALLBACK: Docker daemon/image absent. Running in restricted host subprocess. "
             "Kernel network isolation is disabled.]"

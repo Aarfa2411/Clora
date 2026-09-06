@@ -5,12 +5,11 @@ Manages Ollama REST inference, model pre-warming, health checking, and loud fall
 
 import time
 from typing import Any, Dict, List, Optional
+
 import httpx
 from pydantic import BaseModel, Field
 
 from backend.models.registry import (
-    ModelCapability,
-    ModelProfile,
     ModelRegistry,
     default_registry,
 )
@@ -31,7 +30,7 @@ class ModelRuntimeManager:
 
     def __init__(
         self,
-        ollama_base_url: str = "http://localhost:11434",
+        ollama_base_url: str = "http://127.0.0.1:11434",
         registry: Optional[ModelRegistry] = None,
     ) -> None:
         self.ollama_base_url = ollama_base_url.rstrip("/")

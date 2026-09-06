@@ -4,14 +4,15 @@ Manages code generation, advisory AST pre-filtering, containerized execution,
 autonomous self-correction feedback, loop-level 30s wall-clock caps, and tamper-evident audit logging.
 """
 
+import re
 import time
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Dict, Optional
 
-from backend.models.registry import ModelCapability
+from pydantic import BaseModel
+
 from backend.models.router import IntelligentModelRouter, default_router
 from backend.models.runtime import ModelRuntimeManager, default_runtime
-from backend.sandbox.ast_guard import ASTCheckResult, ASTSecurityGuard, default_ast_guard
+from backend.sandbox.ast_guard import ASTSecurityGuard, default_ast_guard
 from backend.sandbox.docker_executor import (
     ExecutionResult,
     SandboxExecutor,
@@ -40,7 +41,7 @@ class CodingAgentLoop:
         runtime: Optional[ModelRuntimeManager] = None,
         ast_guard: Optional[ASTSecurityGuard] = None,
         executor: Optional[SandboxExecutor] = None,
-        audit_file: str = "demo_audit_trail.jsonl",
+        audit_file: str = "./storage/audit_trail.jsonl",
     ) -> None:
         self.router = router or default_router
         self.runtime = runtime or default_runtime
@@ -181,16 +182,20 @@ class CodingAgentLoop:
         return self._clean_code(res.text)
 
     def _clean_code(self, raw_text: str) -> str:
-        """Extracts clean python code from markdown fence blocks."""
+        """Extracts clean python code from markdown fence blocks using robust regex."""
         text = raw_text.strip()
+        # Find all code blocks delimited by triple backticks
+        blocks = re.findall(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
+        if blocks:
+            # Pick the most substantive python block (contains def/import/return or longest)
+            best_block = max(blocks, key=lambda b: (len(b), "import " in b or "def " in b))
+            return best_block.strip()
+
+        # Fallback if markdown fence was opened but not closed
         if "```python" in text:
-            parts = text.split("```python")
-            if len(parts) > 1:
-                return parts[1].split("```")[0].strip()
-        elif "```" in text:
-            parts = text.split("```")
-            if len(parts) > 1:
-                return parts[1].split("```")[0].strip()
+            return text.split("```python", 1)[1].split("```", 1)[0].strip()
+        if "```" in text:
+            return text.split("```", 1)[1].split("```", 1)[0].strip()
         return text
 
     def _log_audit_event(
