@@ -12,6 +12,11 @@ class FileResponse(BaseModel):
     status: str  # uploaded, processing, indexed, failed
     uploaded_by: str | None = None
     error_message: str | None = None
+    is_scanned: int = 0
+    ocr_confidence: int | None = None
+    extraction_method: str = "native_text"
+    needs_review: int = 0
+    ingestion_job_id: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

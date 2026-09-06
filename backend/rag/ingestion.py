@@ -85,6 +85,29 @@ class DocumentParser:
     def _parse_pdf(self, file_path: str) -> List[ParsedSection]:
         sections: List[ParsedSection] = []
         try:
+            from data_intelligence.pdf_extractor import extract_pdf
+            res = extract_pdf(file_path)
+            for page in res.pages:
+                page_sections = self._extract_sections_from_page(page.text, page.page_number)
+                if page.tables:
+                    for t_idx, table in enumerate(page.tables):
+                        table_str = "\n".join(" | ".join(row) for row in table)
+                        eqs = list(set(EQUIPMENT_ID_REGEX.findall(table_str)))
+                        page_sections.append(
+                            ParsedSection(
+                                title=f"Table {t_idx + 1} (Page {page.page_number})",
+                                page=page.page_number,
+                                content=table_str,
+                                tables=[table_str],
+                                equipment_ids=eqs,
+                            )
+                        )
+                sections.extend(page_sections)
+            return sections
+        except Exception:
+            pass
+
+        try:
             import fitz
 
             doc = fitz.open(file_path)

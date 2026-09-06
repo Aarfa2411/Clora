@@ -124,10 +124,12 @@ class DocumentIngestionBridge:
                 "id": chunk.chunk_id,
                 "document": chunk.text,
                 "metadata": {
-                    "source_document": chunk.source_document,
+                    "source_document": chunk.source_document or result.filename,
                     "page_number": chunk.page_number,
                     "block_type": chunk.block_type,
-                    "needs_human_review": chunk.needs_human_review,
+                    "needs_human_review": getattr(chunk, "needs_human_review", result.needs_human_review),
+                    "ocr_confidence": chunk.ocr_confidence or 100.0,
+                    "extraction_method": chunk.extraction_method,
                     "allowed_roles": DEFAULT_DOCUMENT_ROLES,
                 },
             })

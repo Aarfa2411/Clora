@@ -66,7 +66,11 @@ def run_demo():
     sentinel.audit_cycle("EXTRACT_SCANNED")
     print(f"    -> Extraction Mode: {res_scanned.primary_method}")
     print(f"    -> Fallback OCR Triggered: YES")
-    print(f"    -> Human Review Flag: {res_scanned.needs_human_review}")
+    print(f"    -> Scanned Pages Detected: {res_scanned.scanned_page_count} (Digital: {res_scanned.digital_page_count})")
+    if res_scanned.overall_ocr_confidence:
+        print(f"    -> Mean OCR Confidence: {res_scanned.overall_ocr_confidence}%")
+    print(f"    -> Human-In-The-Loop Flag (needs_human_review): {res_scanned.needs_human_review}")
+    print(f"    -> Structured RAG Chunks Generated: {len(res_scanned.chunks)}")
 
     # -------------------------------------------------------------
     # 2. In-Memory Tabular DuckDB Analytics with AST Guard

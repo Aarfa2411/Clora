@@ -1,26 +1,46 @@
 """
 Security & Audit Package for INDUSAI-X (SIH PS 26117).
-Contains RBAC permission enforcement, thread-safe SHA-256 audit logging, air-gap network verification, and network sentinel.
+Contains RBAC permission enforcement, thread-safe SHA-256 audit logging,
+air-gap network verification, egress enforcement, network sentinel,
+and Ed25519 cryptographic evidence attestation.
 """
 
 from .rbac import (
     ROLE_PERMISSIONS,
     check_permission,
     enforce_permission,
-    PermissionDeniedError
+    PermissionDeniedError,
 )
 
 from .audit_trail import (
     AuditLogger,
-    GENESIS_HASH
+    GENESIS_HASH,
 )
 
 from .airgap_monitor import (
     check_network_isolation,
-    is_local_address
+    is_local_address,
+    NetworkTrustProfile,
+    AddressValidator,
+    AirGapViolationError,
+    AirGapEnforcer,
+    get_active_socket_snapshot,
 )
 
-from .network_proof import AirGapSentinel
+from .network_proof import (
+    AirGapSentinel,
+    BackgroundNetworkAuditor,
+    get_sentinel,
+    get_background_auditor,
+)
+
+from .attestation import (
+    Ed25519KeyManager,
+    EvidenceAttestor,
+    EvidenceVerifier,
+    get_key_manager,
+    get_attestor,
+)
 
 __all__ = [
     "ROLE_PERMISSIONS",
@@ -31,5 +51,18 @@ __all__ = [
     "GENESIS_HASH",
     "check_network_isolation",
     "is_local_address",
-    "AirGapSentinel"
+    "NetworkTrustProfile",
+    "AddressValidator",
+    "AirGapViolationError",
+    "AirGapEnforcer",
+    "get_active_socket_snapshot",
+    "AirGapSentinel",
+    "BackgroundNetworkAuditor",
+    "get_sentinel",
+    "get_background_auditor",
+    "Ed25519KeyManager",
+    "EvidenceAttestor",
+    "EvidenceVerifier",
+    "get_key_manager",
+    "get_attestor",
 ]
