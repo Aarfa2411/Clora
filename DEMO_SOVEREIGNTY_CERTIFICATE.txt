@@ -1,18 +1,28 @@
 ================================================================================
    INDUSAI-X: SOVEREIGN ON-PREMISE AI WORKBENCH - NETWORK PROOF CERTIFICATE   
-   SIH Problem Statement 26117 | Mangalore Refinery and Petrochemicals Ltd      
+   CLORA / INDUSAI-X: NETWORK COMPLIANCE & APPLICATION EGRESS ATTESTATION     
+   Mangalore Refinery and Petrochemicals Limited (MRPL SIH26117)              
 ================================================================================
 
-Timestamp:              2026-09-06T12:26:18.989913+00:00
-Verification Status:    VERIFIED AIR-GAPPED (100% ON-PREMISES)
-Audited Checkpoints:    12 snapshot cycles
+Timestamp:              2026-09-06T16:50:12.656367+00:00
+Verification Status:    ALERT / VIOLATION RECORDED
+Active Network Profile: STRICT_AIRGAP
+Audited Checkpoints:    8 snapshot cycles
 External Sockets Found: 0
-Audit Log File:         C:\Users\deep\OneDrive\Desktop\clora\Clora\demo_airgap_proof.jsonl
-Root Integrity Hash:    e577e7b4a91c15414fb284676af6ccff681f2a4a478e248dcf6135c2d63338df
+Blocked Egress Attempts:0
+Hash Chain Integrity:   COMPROMISED
+Root Integrity Hash:    e83fccaf307b9f768fe9c5688d5516ed66c35b05f6c533ee732372402bc16b5b
+Audit Log File:         C:\Users\Moiz\Desktop\PROJECTS\Clora\demo_airgap_proof.jsonl
 
-CERTIFICATION STATEMENT:
-This document cryptographically certifies that during document extraction,
-OCR fallback processing, in-memory DuckDB analytics, and report generation,
-zero network requests were made to external or cloud AI endpoints.
-All telemetry, P&IDs, and confidential refinery records remained entirely on-premises.
+OPERATIONAL CONTROL SCOPE:
+Level A (Application Egress Guard):
+  - All outbound network calls from the CLORA Python process are evaluated against
+    the active Network Trust Profile prior to socket connection handshakes.
+  - Disallowed destinations are synchronously blocked with AirGapViolationError.
+  - Zero external cloud inference APIs were contacted during document extraction,
+    vector indexing, local model execution, and report generation.
+
+Level B (Host/Deployment Guidance):
+  - Designed to operate securely within refinery-managed OT/SCADA air-gapped VLANs
+    and isolated host network policies.
 ================================================================================

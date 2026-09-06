@@ -12,11 +12,12 @@ Security & Robustness:
 """
 
 import os
+from typing import Any, Dict, List, Tuple
+
 import duckdb
 import pandas as pd
 import sqlglot
 from sqlglot import exp
-from typing import Dict, Any, List, Optional, Tuple
 
 
 class SQLSecurityError(Exception):
@@ -62,7 +63,7 @@ class TabularEngine:
         self.conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM temp_{table_name};")
         self.conn.unregister(f"temp_{table_name}")
         self.registered_tables[table_name] = csv_path
-        
+
         row_count = self.conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
         return row_count
 
@@ -118,7 +119,7 @@ class TabularEngine:
                 func_name = str(func.this).upper()
             else:
                 func_name = (func.key or func.__class__.__name__).upper()
-            
+
             if func_name and func_name not in ALLOWED_SQL_FUNCTIONS:
                 raise SQLSecurityError(f"Forbidden SQL function '{func_name}' detected. Only mathematical and aggregate functions are permitted.")
 
@@ -142,7 +143,20 @@ class TabularEngine:
 
         dict_rows = [dict(zip(columns, row)) for row in rows]
         df_result = pd.DataFrame(rows, columns=columns)
-        markdown_table = df_result.to_markdown(index=False) if not df_result.empty else "No results found."
+        if df_result.empty:
+            markdown_table = "No results found."
+        else:
+            try:
+                markdown_table = df_result.to_markdown(index=False)
+            except Exception:
+                # Built-in lightweight markdown formatter fallback (no tabulate dependency required)
+                header = "| " + " | ".join(str(c) for c in df_result.columns) + " |"
+                sep = "| " + " | ".join("---" for _ in df_result.columns) + " |"
+                row_lines = [
+                    "| " + " | ".join(str(val) for val in row)
+                    for row in df_result.itertuples(index=False)
+                ]
+                markdown_table = "\n".join([header, sep] + [r + " |" for r in row_lines])
 
         return dict_rows, markdown_table
 
@@ -150,7 +164,7 @@ class TabularEngine:
         """Returns column names and types for LLM prompt context."""
         if table_name not in self.registered_tables:
             raise KeyError(f"Table '{table_name}' not found.")
-        
+
         info = self.conn.execute(f"PRAGMA table_info('{table_name}')").fetchall()
         return {col[1]: col[2] for col in info}
 
