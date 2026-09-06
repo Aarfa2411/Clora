@@ -92,6 +92,36 @@ class TestAuditBridge:
 
 
 # ---------------------------------------------------------------------------
+# DocumentIngestionBridge tests
+# ---------------------------------------------------------------------------
+
+class TestDocumentIngestionBridge:
+    def setup_method(self):
+        import os
+        from data_intelligence.integration_bridge import DocumentIngestionBridge
+        self.bridge = DocumentIngestionBridge()
+        self.digital_pdf = os.path.join("samples", "sample_inspection_digital.pdf")
+        self.scanned_pdf = os.path.join("samples", "sample_inspection_scanned.pdf")
+
+    def test_ingest_digital_pdf(self):
+        docs = self.bridge.ingest_pdf(self.digital_pdf)
+        assert isinstance(docs, list)
+        assert len(docs) > 0
+        assert "id" in docs[0]
+        assert "document" in docs[0]
+        assert "metadata" in docs[0]
+        assert docs[0]["metadata"]["source_document"] == "sample_inspection_digital.pdf"
+        assert docs[0]["metadata"]["extraction_method"] == "native_text"
+
+    def test_ingest_scanned_pdf(self):
+        docs = self.bridge.ingest_pdf(self.scanned_pdf)
+        assert isinstance(docs, list)
+        assert len(docs) > 0
+        assert docs[0]["metadata"]["source_document"] == "sample_inspection_scanned.pdf"
+        assert docs[0]["metadata"]["extraction_method"] == "ocr_fallback"
+
+
+# ---------------------------------------------------------------------------
 # Member6Bridge facade tests
 # ---------------------------------------------------------------------------
 

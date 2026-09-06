@@ -26,6 +26,11 @@ class DocumentChunk:
     char_offset_end: int                       # Character end offset in page
     bbox: List[float] = field(default_factory=list)  # [x0, y0, x1, y1] coordinates
     metadata: Dict[str, Any] = field(default_factory=dict)
+    source_document: str = ""                  # Source PDF filename
+    ocr_confidence: Optional[float] = None     # Chunk-level mean OCR confidence
+    extraction_method: str = "native_text"     # 'native_text' | 'ocr_fallback' | 'hybrid'
+    confidence_tier: str = "TIER_1_HIGH_CONFIDENCE"
+    entity_warnings: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -40,6 +45,11 @@ class PageExtraction:
     chunks: List[DocumentChunk] = field(default_factory=list)     # Ready-to-embed chunks for Member 5
     ocr_confidence: Optional[float] = None     # Mean OCR confidence (0.0 to 100.0)
     needs_human_review: bool = False           # True if OCR confidence < 60% or anomalous extraction
+    skew_angle: float = 0.0                    # Detected page skew in degrees
+    ocr_engine: str = "native_stream"          # 'tesseract_lstm' | 'native_stream' | 'hybrid'
+    word_boxes: List[Dict[str, Any]] = field(default_factory=list)  # Detailed word-level boxes and confidences
+    confidence_tier: str = "TIER_1_HIGH_CONFIDENCE"
+    entity_warnings: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -55,6 +65,10 @@ class DocumentExtractionResult:
     chunks: List[DocumentChunk] = field(default_factory=list)      # Aggregated chunks across all pages
     full_text: str = ""                        # Concatenated text of all pages
     needs_human_review: bool = False           # True if any page requires review
+    overall_ocr_confidence: Optional[float] = None
+    scanned_page_count: int = 0
+    digital_page_count: int = 0
+    entity_warnings: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert extraction result to a serializable dictionary."""
