@@ -3,19 +3,6 @@
 **SIH26117 | Mangalore Refinery and Petrochemicals Limited (MRPL)**  
 *Theme: Smart Automation | Type: Software | Category: Critical Operational Technology (OT)*
 
-<<<<<<< HEAD
-[![CI](https://github.com/M0izz/Clora/actions/workflows/ci.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/ci.yml)
-[![Tests](https://github.com/M0izz/Clora/actions/workflows/tests.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/tests.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.14-blue.svg)](https://www.python.org/)
-[![Sovereignty: 100% On-Premises](https://img.shields.io/badge/Sovereignty-100%25%20On--Premises-emerald.svg)](#two-layer-sovereign-trust-architecture)
-[![Digital Signature: Ed25519 Sealed](https://img.shields.io/badge/Digital%20Signature-Ed25519%20Curve25519-copper.svg)](#2-ed25519-evidence-attestation--independent-offline-verification)
-[![Air-Gap: Egress Enforced](https://img.shields.io/badge/Air--Gap-In--Process%20Egress%20Enforced-red.svg)](#application-level-egress-enforcement--network-trust-profiles)
-[![Audit Trail: SHA--256 Chained](https://img.shields.io/badge/Audit%20Trail-SHA--256%20Chained-informational.svg)](#1-sha-256-monotonic-hash-chain)
-[![Access Control: 5 Refinery Roles](https://img.shields.io/badge/RBAC-5%20Refinery%20Roles-blueviolet.svg)](#permission-aware-rag--role-based-access-control)
-[![Code Style: Ruff](https://img.shields.io/badge/Code%20Style-Ruff-000000.svg)](https://github.com/astral-sh/ruff)
-
----
 
 ## Table of Contents
 
