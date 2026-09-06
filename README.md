@@ -1,16 +1,8 @@
-# INDUSAI-X (Clora): Sovereign On-Premise Industrial Agentic AI Workbench
+# CLORA: Sovereign On-Premise Industrial Agentic AI Workbench
 
 **SIH26117 | Mangalore Refinery and Petrochemicals Limited (MRPL)**  
 *Theme: Smart Automation | Type: Software*
 
-[![CI](https://github.com/M0izz/Clora/actions/workflows/ci.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/ci.yml)
-[![Tests](https://github.com/M0izz/Clora/actions/workflows/tests.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/tests.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.14-blue.svg)](https://www.python.org/)
-[![Sovereignty: 100% On-Premises](https://img.shields.io/badge/Sovereignty-100%25%20On--Premises-emerald.svg)](#two-layer-sovereign-trust-architecture)
-[![Digital Signature: Ed25519 Sealed](https://img.shields.io/badge/Digital%20Signature-Ed25519%20Curve25519-copper.svg)](#2-ed25519-evidence-attestation--independent-offline-verification)
-
----
 
 ## Executive Summary
 
