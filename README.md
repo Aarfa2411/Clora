@@ -1,7 +1,7 @@
 # INDUSAI-X (Clora): Sovereign On-Premise Industrial Agentic AI Workbench
 
 **SIH26117 | Mangalore Refinery and Petrochemicals Limited (MRPL)**  
-*Theme: Smart Automation | Type: Software*
+*Theme: Smart Automation | Type: Software | Category: Critical Operational Technology (OT)*
 
 [![CI](https://github.com/M0izz/Clora/actions/workflows/ci.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/ci.yml)
 [![Tests](https://github.com/M0izz/Clora/actions/workflows/tests.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/tests.yml)
@@ -9,32 +9,77 @@
 [![Python: 3.10+](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.14-blue.svg)](https://www.python.org/)
 [![Sovereignty: 100% On-Premises](https://img.shields.io/badge/Sovereignty-100%25%20On--Premises-emerald.svg)](#two-layer-sovereign-trust-architecture)
 [![Digital Signature: Ed25519 Sealed](https://img.shields.io/badge/Digital%20Signature-Ed25519%20Curve25519-copper.svg)](#2-ed25519-evidence-attestation--independent-offline-verification)
+[![Air-Gap: Egress Enforced](https://img.shields.io/badge/Air--Gap-In--Process%20Egress%20Enforced-red.svg)](#application-level-egress-enforcement--network-trust-profiles)
+[![Audit Trail: SHA--256 Chained](https://img.shields.io/badge/Audit%20Trail-SHA--256%20Chained-informational.svg)](#1-sha-256-monotonic-hash-chain)
+[![Access Control: 5 Refinery Roles](https://img.shields.io/badge/RBAC-5%20Refinery%20Roles-blueviolet.svg)](#permission-aware-rag--role-based-access-control)
+[![Code Style: Ruff](https://img.shields.io/badge/Code%20Style-Ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
+---
+
+## Table of Contents
+
+- [Executive Summary](#executive-summary)
+- [Industrial Problem Context (MRPL SIH26117)](#industrial-problem-context-mrpl-sih26117)
+- [Architecture & Multi-Agent Topology](#architecture--multi-agent-topology)
+- [Two-Layer Sovereign Trust Architecture](#two-layer-sovereign-trust-architecture)
+  - [1. SHA-256 Monotonic Hash Chain (Execution History)](#1-sha-256-monotonic-hash-chain)
+  - [2. Ed25519 Evidence Attestation (Output Provenance)](#2-ed25519-evidence-attestation--independent-offline-verification)
+- [Application-Level Egress Enforcement & Network Trust Profiles](#application-level-egress-enforcement--network-trust-profiles)
+- [6-Tier On-Premises Processing Engine](#6-tier-on-premises-processing-engine)
+- [Permission-Aware RAG & Role-Based Access Control](#permission-aware-rag--role-based-access-control)
+- [Industrial Hallucination Firewall & Causal Leap Guard](#industrial-hallucination-firewall--causal-leap-guard)
+- [Offline Inference & Embedding Benchmarks](#offline-inference--embedding-benchmarks)
+- [Independent Third-Party Verification Guide](#independent-third-party-verification-guide)
+  - [Method A: CLORA Attestation CLI](#method-a-clora-attestation-cli)
+  - [Method B: Zero-Dependency Pure Python Verification](#method-b-zero-dependency-pure-python-verification)
+- [REST API Reference](#rest-api-reference)
+- [Repository Structure](#repository-structure)
+- [Installation & Quickstart](#installation--quickstart)
+- [Interactive Live Demonstrations](#interactive-live-demonstrations)
+- [Continuous Integration & Code Quality](#continuous-integration--code-quality)
+- [License](#license)
 
 ---
 
 ## Executive Summary
 
-**INDUSAI-X** (codenamed **Clora**) is a sovereign, air-gappable industrial AI workbench engineered specifically for confidential refinery, petrochemical, and critical OT (Operational Technology) operations. Unlike public cloud AI wrappers, INDUSAI-X operates **entirely on local, open-weight foundation models and embedded local databases**, enforcing data sovereignty while automating root cause investigations, SOP retrieval, telemetry analytics, and multi-source engineering analysis.
+**INDUSAI-X** (codenamed **Clora**) is a sovereign, air-gappable industrial AI workbench engineered specifically for confidential refinery, petrochemical, and critical Operational Technology (OT) environments. Unlike commercial cloud AI wrappers that expose proprietary telemetry and maintenance logs over public networks, INDUSAI-X operates **100% on local, open-weight foundation models and embedded local databases**.
 
 ### Core Engineering Capabilities:
-1. **Application-Level Egress Enforcement**: Synchronous socket-level interceptor (`AirGapEnforcer`) blocking unapproved outbound connections before TCP handshakes occur across configurable Network Trust Profiles (`STRICT_AIRGAP`, `INDUSTRIAL_LAN`, `DEVELOPMENT`).
+1. **Application-Level Egress Enforcement (`AirGapEnforcer`)**: Synchronous socket-level interceptor hooking Python's `socket.socket.connect`, blocking non-whitelisted outbound network connections before TCP handshakes occur across three configurable Network Trust Profiles (`STRICT_AIRGAP`, `INDUSTRIAL_LAN`, `DEVELOPMENT`).
 2. **Two-Layer Sovereign Trust Architecture**:
-   - **Layer 1 (Execution History)**: Monotonic SHA-256 chained audit ledger (`airgap_proof_log.jsonl`) guaranteeing execution history is untampered.
-   - **Layer 2 (Output Provenance)**: On-premises **Ed25519 Digital Signatures** sealing reports into exportable `.clora-proof` packages, verifiable completely offline with zero server dependencies.
-3. **6-Tier Local Processing Engine**:
-   - Local Quantized LLMs (Ollama on loopback, e.g., Qwen 2.5 3B, Llama 3.2 3B).
-   - In-Process Embeddings (PyTorch SentenceTransformers with `HF_HUB_OFFLINE=1`).
-   - Local In-Memory / Persistent Vector Store (ChromaDB with telemetry disabled).
-   - In-Memory AST-Protected Tabular SQL (DuckDB with `SET enable_external_access = false`).
-   - Local Metadata & State Persistence (SQLite WAL mode).
-   - Sandboxed On-Premises Document Storage (`./storage/workspaces/`).
-4. **Permission-Aware RAG**: Role-Based Access Control (RBAC across 5 refinery roles) strictly filtered at vector similarity search time before chunks enter model context.
-5. **LangGraph Multi-Agent Orchestration**: Specialized agents for query routing, permission-filtered retrieval, multi-source cross-correlation, and causal verification.
+   - **Layer 1 (Internal Auditability)**: Monotonic SHA-256 chained audit ledger (`airgap_proof_log.jsonl`) guaranteeing execution history is cryptographically tamper-evident.
+   - **Layer 2 (Output Provenance)**: On-premises **Ed25519 Digital Signatures** sealing reports into portable `.clora-proof` packages, verifiable completely offline with zero server dependencies.
+3. **6-Tier Sovereign Processing Engine**:
+   - Local LLM inference via Ollama (`127.0.0.1:11434`, e.g., Qwen 2.5 3B, Llama 3.2 3B).
+   - In-process vector embeddings (`all-MiniLM-L6-v2` via PyTorch with `HF_HUB_OFFLINE=1`).
+   - Local embedded vector database (ChromaDB `PersistentClient` with telemetry disabled).
+   - In-memory AST-protected tabular SQL analytics (DuckDB with `SET enable_external_access = false`).
+   - Local metadata & state persistence (SQLite with WAL journal mode).
+   - Sandboxed local document storage (`./storage/workspaces/`).
+4. **Permission-Aware RAG**: 5-role refinery RBAC strictly filtered at vector similarity search time before chunks enter model context.
+5. **LangGraph Multi-Agent Orchestration**: Deterministic state machine coordinating specialized agents for query routing, permission-filtered retrieval, multi-source cross-correlation, and causal verification.
 6. **Industrial Hallucination Firewall & Causal Leap Guard**: Deterministic claim extraction, NLI citation scoring, contradiction detection, and automated causal leap downgrading into cautious engineering language.
 
 ---
 
-## Architecture Overview
+## Industrial Problem Context (MRPL SIH26117)
+
+Refineries and petrochemical complexes like **Mangalore Refinery and Petrochemicals Limited (MRPL)** generate massive volumes of critical technical documentation:
+- Process Flow Diagrams (PFDs) and Piping & Instrumentation Diagrams (P&IDs).
+- Rotating equipment maintenance logs and vibration analysis spectra (e.g., Crude Distillation Units, Hydrocrackers).
+- Standard Operating Procedures (SOPs), HAZOP safety analyses, and incident root cause reports.
+
+### Why Cloud AI Solutions Fail in Industrial OT:
+- **Data Sovereignty & Legal Mandates**: Exporting proprietary refinery telemetry, operating setpoints, or maintenance failures to third-party cloud APIs violates industrial security policies and national critical infrastructure regulations.
+- **Air-Gapped Realities**: Process Control Networks (PCN / Purdue Model Level 3 & Level 4) often operate in physically air-gapped or strictly isolated LAN environments with zero direct internet access.
+- **Cost of Hallucination**: A fabricated torque specification or speculative causal diagnosis in a high-pressure refinery unit can lead to catastrophic equipment failure, unscheduled shutdowns, or personal injury.
+
+INDUSAI-X solves these challenges by combining strict **local-only computation**, **deterministic verification**, and **cryptographic proof of custody**.
+
+---
+
+## Architecture & Multi-Agent Topology
 
 ```mermaid
 flowchart TD
@@ -100,29 +145,32 @@ flowchart TD
 
 ## Two-Layer Sovereign Trust Architecture
 
-CLORA implements a dual cryptographic trust model separating **execution history auditability** from **output authenticity**:
+CLORA implements a dual cryptographic trust model separating **internal execution history auditability** from **external output authenticity and provenance**:
 
 ```
-Layer 1: Execution History Auditability
+Layer 1: Execution History Auditability (Internal Tamper-Evident Ledger)
   [Agent Steps] ──> [SHA-256 Hash Chain] ──> [airgap_proof_log.jsonl]
   Proves: Monotonic execution history is intact and unaltered internally.
 
-Layer 2: Output Provenance & Tamper-Evident Sealing
+Layer 2: Output Provenance & Tamper-Evident Sealing (Asymmetric Attestation)
   [Final Report] ──> [Canonical JSON] ──> [Ed25519 Digital Seal] ──> [.clora-proof Package]
   Proves: Generated by CLORA's local instance; not a single character modified.
 ```
 
 ### 1. SHA-256 Monotonic Hash Chain
 Every major lifecycle event (agent planning, vector search, tabular analysis, synthesis, background heartbeat) is appended to `airgap_proof_log.jsonl` with cryptographic linking:
+
 $$H_n = \text{SHA-256}(H_{n-1} \parallel \text{CanonicalJSON}(\text{Payload}_n))$$
+
 - **Genesis Block**: Root anchored at `0000000000000000000000000000000000000000000000000000000000000000`.
-- **Integrity Validation**: The built-in `verify_hash_chain()` validator recalculates every block sequentially and flags the exact line if any tampering or sequence deletion occurs.
+- **Integrity Validation**: The built-in `verify_hash_chain()` validator recalculates every block sequentially and flags the exact line if any tampering, byte alternation, or sequence deletion occurs.
+- **Live Background Sentinel**: The `BackgroundNetworkAuditor` daemon continuously polls active OS socket bindings every 5 seconds, logging heartbeat blocks into the chain.
 
 ### 2. Ed25519 Evidence Attestation & Independent Offline Verification
 - **Local Key Pair Generation**: CLORA generates an on-premises **Curve25519 / Ed25519 key pair** during installation in `./storage/keys/`.
-- **Zero Cloud Trust**: The Private Key (`clora_ed25519_private.pem`) strictly never leaves the host and is never exposed over the API.
-- **Canonical Serialization**: Serializes report data deterministically (`json.dumps(..., sort_keys=True, separators=(',', ':'))`), preventing encoding ambiguities.
-- **Independent Verification**: Evaluators and auditors can verify `.clora-proof` packages independently using Python's `cryptography`, OpenSSL, or CLI tools without needing a running CLORA instance.
+- **Zero Cloud Trust**: The Private Key (`clora_ed25519_private.pem`) strictly never leaves the host and is never exposed over any API.
+- **Canonical Serialization**: Serializes report data deterministically (`json.dumps(..., sort_keys=True, separators=(',', ':'))`), preventing whitespace or JSON ordering ambiguities.
+- **Independent Verification**: Evaluators and auditors can verify `.clora-proof` packages independently using Python's standard `cryptography` library, OpenSSL, or CLI tools without needing a running CLORA instance.
 - **Single-Character Tamper Detection**: If even one character is altered (e.g., `80.0°C` modified to `90.0°C`), signature verification immediately fails with `✗ INVALID — CONTENT MODIFIED`.
 
 ---
@@ -140,73 +188,89 @@ Connection Request ──> AirGapEnforcer ──> Destination in Active Profile?
 ### Network Trust Profiles:
 | Profile | Permitted Destinations | Recommended Deployment |
 |---|---|---|
-| 🔒 **`STRICT_AIRGAP`** | Loopback only (`127.0.0.0/8`, `::1`, `:8000`, `:11434`) | Standalone offline workstation / air-gapped demo |
+| 🔒 **`STRICT_AIRGAP`** | Loopback only (`127.0.0.0/8`, `::1`, ports `8000`, `11434`) | Standalone offline workstation / air-gapped demo |
 | 🏭 **`INDUSTRIAL_LAN`** | Loopback + explicit administrator-approved CIDRs (e.g. `10.42.10.0/24`) | Internal refinery OT network / SCADA historian cluster |
 | 🌐 **`DEVELOPMENT`** | Permissive local routes | Controlled developer testing |
 
 > [!NOTE]
+> **Defense-in-Depth Scope**: Application-level socket interception operates within the Python interpreter to intercept library and agent connections. In production critical infrastructure, this works as an integrated layer alongside OS-level packet filters (e.g., `iptables` / Windows Advanced Firewall) and physical layer air gaps.
+
+> [!IMPORTANT]
 > **Auditable Profile Transitions**: Security profile modifications require an authenticated user ID and mandatory operational justification. Every change emits an immutable transition record into the SHA-256 hash chain.
 
 ---
 
-## 6-Tier On-Premises Processing Architecture
+## 6-Tier On-Premises Processing Engine
 
-| Tier | Component | Technology | Sovereign Enforcement |
+| Tier | Component | Technology | Sovereign Enforcement Mechanism |
 |:---:|---|---|---|
 | **Tier 1** | **LLM Inference** | Ollama (Local Daemon) | Bound exclusively to `127.0.0.1:11434`; rejects remote cloud endpoints and cloud API keys. |
 | **Tier 2** | **Embedding Engine** | `sentence-transformers` | Executes in-process via local PyTorch/ONNX; enforces `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`. |
-| **Tier 3** | **Vector Database** | ChromaDB (`PersistentClient`) | Local disk directory (`./storage/chroma`); anonymized telemetry and OpenTelemetry telemetry strictly disabled. |
+| **Tier 3** | **Vector Database** | ChromaDB (`PersistentClient`) | Local disk directory (`./storage/chroma`); anonymized telemetry and OpenTelemetry strictly disabled. |
 | **Tier 4** | **Tabular Analytics** | DuckDB (Embedded Engine) | In-memory execution with `SET enable_external_access = false;` and AST function whitelist blocking file operations. |
 | **Tier 5** | **Persistence Spine** | SQLite (WAL Mode) | Local database (`./storage/indusai.db`) with zero network socket drivers; foreign keys and WAL journal mode enforced. |
-| **Tier 6** | **Document Storage** | Local Sandboxed Storage | Local filesystem paths (`./storage/workspaces/`); access governed by refinery RBAC. |
+| **Tier 6** | **Document Storage** | Local Sandboxed Storage | Local filesystem paths (`./storage/workspaces/`); access governed strictly by refinery RBAC. |
 
 ---
 
-## Core Engineering Features
+## Permission-Aware RAG & Role-Based Access Control
 
-### 1. Permission-Aware Document Ingestion & Chunking
-- **Structure- & Table-Preserving**: Parses technical manuals, P&IDs, vibration logs, and inspection sheets without tearing tabular contexts.
-- **Granular Access Control**: Every chunk retains strict metadata attributes enforced at similarity retrieval time:
-  ```json
-  {
-    "chunk_id": "chunk_8f29",
-    "document_id": "maintenance_report_102",
-    "document_name": "Pump_P-101_Maintenance.pdf",
-    "page": 14,
-    "section": "Root Cause Analysis",
-    "equipment_id": "P-101",
-    "document_type": "maintenance_report",
-    "department": "maintenance",
-    "classification": "confidential",
-    "allowed_roles": ["maintenance_engineer", "supervisor"],
-    "timestamp": "2026-08-20"
-  }
-  ```
+Refinery documentation contains confidential operating parameters, incident investigations, and proprietary process recipes. CLORA enforces a **5-tier Role-Based Access Control (RBAC)** matrix filtered directly at vector retrieval time:
 
-### 2. Self-Healing Retrieval with 1-Hop Query Expansion
-- Resolves colloquial vs technical equipment tags (*booster pump* $\leftrightarrow$ `P-101`, *pre-heat exchanger* $\leftrightarrow$ `HEX-301`).
-- If initial semantic search returns zero results, executes an automated 1-hop vocabulary expansion.
-- If no evidence exists in the repository, the workflow gracefully terminates into `INSUFFICIENT_EVIDENCE` without speculating.
+| Role | Access Scope | Retrieval Clearance | Tabular Analytics Scope |
+|---|---|---|---|
+| 🔧 **Field Technician** | Equipment manuals, safety SOPs, assigned work orders | `unclassified`, `internal` | Read-only vibration/temp telemetry |
+| 🛠️ **Maintenance Engineer** | Root cause analyses, vibration telemetry, equipment logs | Up to `confidential` | Full maintenance SQL queries |
+| 🧪 **Lead Process Engineer** | Process P&IDs, HAZOP assessments, operational logs | Up to `confidential` | Process optimization telemetry |
+| 🛡️ **Operations Supervisor** | Incident escalations, shift logs, override authorizations | Up to `restricted` | Plant-wide cross-unit telemetry |
+| 👔 **Plant Director / Auditor** | Full refinery repository, compliance attestations, audit trail | `all` (`secret`) | Complete audit & attestation export |
 
-### 3. Industrial Hallucination Firewall & Causal Leap Guard
-- **Claim Support Verification**:
-  - `SUPPORTED` (Score $\ge 0.85$): Emits verified finding with citations.
-  - `PARTIALLY_SUPPORTED` ($0.60 \le \text{Score} < 0.85$): Enforces hedged, cautious findings.
-  - `CONTRADICTED`: Flags conflicting sources for supervisor escalation.
-  - `INSUFFICIENT_EVIDENCE`: Explicitly declares absence of proof.
-- **Causal Leap Guard**: When co-occurring observations (e.g., *bearing thermal spike* and *lubricant contamination*) lack documented causal proof, automatically hedges the claim:
-  > *"Available records indicate lubrication contamination and abnormal bearing temperature. These factors may be related; however, the documents do not conclusively establish direct causation."*
+```json
+// Example of a permission-tagged vector chunk
+{
+  "chunk_id": "chunk_8f29",
+  "document_id": "maintenance_report_102",
+  "document_name": "Pump_P-101_Maintenance.pdf",
+  "page": 14,
+  "section": "Root Cause Analysis",
+  "equipment_id": "P-101",
+  "document_type": "maintenance_report",
+  "department": "maintenance",
+  "classification": "confidential",
+  "allowed_roles": ["maintenance_engineer", "supervisor", "director"],
+  "timestamp": "2026-08-20"
+}
+```
 
-### 4. Standardized 5-Section Engineering Response
+---
+
+## Industrial Hallucination Firewall & Causal Leap Guard
+
+Industrial decisions cannot tolerate speculation. The Hallucination Firewall evaluates every generated assertion through an automated verification pipeline:
+
+### 1. Claim Verification Classifications
+- `SUPPORTED` ($\text{Score} \ge 0.85$): Emits verified finding with explicit document citations.
+- `PARTIALLY_SUPPORTED` ($0.60 \le \text{Score} < 0.85$): Enforces cautious language.
+- `CONTRADICTED`: Flags conflicting sources for supervisor escalation.
+- `INSUFFICIENT_EVIDENCE`: Explicitly declares absence of proof without guessing.
+
+### 2. Causal Leap Guard
+When co-occurring observations (e.g., *bearing thermal spike* and *lubricant contamination*) lack documented causal proof, the Causal Leap Guard automatically intercepts and hedges the claim:
+
+> **Raw Model Output:** *"The bearing failed because contaminated oil caused the temperature to rise."*  
+> **Guarded Engineering Output:** *"Available records indicate lubrication contamination and abnormal bearing temperature (104.2°C). These factors may be related; however, the documents do not conclusively establish direct causation."*
+
+### 3. Standardized 5-Section Engineering Response Format
 ```
 ANSWER
-────────────────────────
+────────────────────────────────────────────────────────────
 Verified Findings
 • Inboard roller bearing temperature reached 104.2°C, exceeding 80.0°C limit [Source: Pump_P101_Maintenance.pdf, Page 14]
 • Overall vibration velocity RMS reached 9.82 mm/s [Source: CDU_Vibration_Telemetry.csv, Row 1422]
 
 Analysis
-• Available records indicate lubrication contamination and abnormal bearing temperature...
+• Available records indicate lubrication contamination and abnormal bearing temperature.
+• These factors may be related; however, the documents do not conclusively establish direct causation.
 
 Uncertainty
 • The records do not establish whether electrical harmonics contributed to the motor trip.
@@ -238,6 +302,68 @@ All metrics represent inference executed **100% locally and offline** without ex
 | `all-MiniLM-L6-v2` (PyTorch) | 384 | < 1 ms | ~906 chunks/s | 100% | 100% | 0.12 MB |
 | `bge-small-en-v1.5` (PyTorch) | 384 | < 1 ms | ~1,219 chunks/s | 100% | 100% | 0.12 MB |
 | `nomic-embed-text` (Ollama) | 768 | Local HTTP | ~1-2 chunks/s | 100% | 100% | 1.54 MB |
+
+---
+
+## Independent Third-Party Verification Guide
+
+Auditors and evaluators can independently verify `.clora-proof` packages completely offline without requiring access to a running CLORA server.
+
+### Method A: CLORA Attestation CLI
+```bash
+# Verify a signed evidence package
+python -m security.attestation verify sample_report.clora-proof
+
+# Inspect the canonical payload and signature metadata
+python -m security.attestation inspect sample_report.clora-proof
+
+# Run the live cryptographic tamper detection demonstration
+python -m security.attestation demo
+```
+
+### Method B: Zero-Dependency Pure Python Verification
+Any standard Python environment with the `cryptography` library can verify evidence packages in 15 lines:
+
+```python
+import base64, hashlib, json
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
+# 1. Load the signed evidence package
+with open("sample_report.clora-proof", "r", encoding="utf-8") as f:
+    proof = json.load(f)
+
+# 2. Re-serialize canonical bytes deterministically
+canonical_bytes = json.dumps(proof["canonical_payload"], sort_keys=True, separators=(',', ':')).encode("utf-8")
+
+# 3. Check SHA-256 content fingerprint
+assert hashlib.sha256(canonical_bytes).hexdigest() == proof["content_sha256"], "Content SHA-256 mismatch!"
+
+# 4. Cryptographically verify Ed25519 signature using embedded public key
+pub_key = serialization.load_pem_public_key(proof["public_key_pem"].encode("utf-8"))
+signature_bytes = base64.b64decode(proof["signature"])
+pub_key.verify(signature_bytes, canonical_bytes)
+
+print("✓ PROOF VERIFIED: Authentic, untampered, generated by CLORA.")
+```
+
+---
+
+## REST API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/sovereignty/status` | Real-time sentinel status, profile, socket snapshot, key ID |
+| `GET` | `/api/sovereignty/audit-trail` | Paginated SHA-256 monotonic hash chain records |
+| `POST` | `/api/sovereignty/audit-now` | Force immediate socket audit scan and hash block emission |
+| `POST` | `/api/sovereignty/simulate-violation` | Trigger controlled unauthorized socket connect to test interceptor |
+| `GET` | `/api/sovereignty/identity` | Export local public key PEM, key ID, and fingerprint |
+| `POST` | `/api/sovereignty/sign` | Sign arbitrary report payload into verifiable `.clora-proof` package |
+| `POST` | `/api/sovereignty/verify` | Independently verify `.clora-proof` package against Ed25519 key |
+| `POST` | `/api/sovereignty/simulate-tamper` | Side-by-side demonstration proving single-character tamper detection |
+| `GET` | `/api/sovereignty/sample-proof` | Retrieve a ready-to-test signed `.clora-proof` package |
+| `POST` | `/api/sovereignty/profile` | Switch network trust profile with mandatory operational justification |
+| `GET` | `/api/sovereignty/attestation` | Download formal cryptographic compliance attestation text |
 
 ---
 
@@ -279,7 +405,7 @@ INDUSAI-X/
 │   ├── __init__.py
 │   ├── airgap_monitor.py          # AirGapEnforcer socket hook & NetworkTrustProfiles
 │   ├── network_proof.py           # AirGapSentinel SHA-256 hash chain & BackgroundNetworkAuditor
-│   ├── attestation.py             # Ed25519KeyManager, EvidenceAttestor, EvidenceVerifier
+│   ├── attestation.py             # Ed25519KeyManager, EvidenceAttestor, EvidenceVerifier CLI
 │   ├── rbac.py                    # 5-role permission matrix & check_permission decorators
 │   └── audit_trail.py             # Thread-safe SHA-256 event audit logger
 │
@@ -313,7 +439,7 @@ INDUSAI-X/
 
 ---
 
-## Installation & Setup
+## Installation & Quickstart
 
 ### Prerequisites
 - Python 3.10, 3.11, or 3.14
@@ -336,14 +462,14 @@ pip install -r requirements-dev.txt
 ### 2. Run Automated Test Suite
 Verify that all 28 security, cryptographic, and agent tests pass:
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/test_evidence_attestation.py tests/test_sovereignty_api.py tests/test_airgap_enforcer.py tests/test_network_proof.py tests/test_security_audit.py -v
 ```
 
 ### 3. Start Backend Server
 ```bash
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-Interactive Swagger API documentation: `http://127.0.0.1:8000/docs`
+Interactive Swagger API documentation is available at: `http://127.0.0.1:8000/docs`
 
 ### 4. Start Frontend Console
 ```bash

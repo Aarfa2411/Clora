@@ -325,3 +325,58 @@ def get_key_manager(keys_dir: str = "./storage/keys") -> Ed25519KeyManager:
 def get_attestor(keys_dir: str = "./storage/keys") -> EvidenceAttestor:
     """Returns an EvidenceAttestor instance using the singleton key manager."""
     return EvidenceAttestor(get_key_manager(keys_dir))
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("CLORA Evidence Attestation CLI")
+        print("Usage:")
+        print("  python -m security.attestation verify <path_to_proof.clora-proof>")
+        print("  python -m security.attestation inspect <path_to_proof.clora-proof>")
+        print("  python -m security.attestation demo")
+        sys.exit(0)
+
+    cmd = sys.argv[1].lower()
+
+    if cmd == "verify":
+        if len(sys.argv) < 3:
+            print("Error: Specify proof file path. E.g. python -m security.attestation verify report.clora-proof")
+            sys.exit(1)
+        proof_file = Path(sys.argv[2])
+        if not proof_file.exists():
+            print(f"Error: File not found: {proof_file}")
+            sys.exit(1)
+        with open(proof_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        valid, msg, details = EvidenceVerifier.verify_proof(data)
+        print("═" * 60)
+        print(f"CLORA OFFLINE VERIFICATION: {'[PASSED]' if valid else '[FAILED]'}")
+        print("═" * 60)
+        print(f"Status: {msg}")
+        print(f"Key ID: {details.get('key_id', 'N/A')}")
+        print(f"SHA-256: {details.get('computed_sha256', 'N/A')}")
+        sys.exit(0 if valid else 1)
+
+    elif cmd == "inspect":
+        if len(sys.argv) < 3:
+            print("Error: Specify proof file path.")
+            sys.exit(1)
+        proof_file = Path(sys.argv[2])
+        with open(proof_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        print(json.dumps(data, indent=2))
+
+    elif cmd == "demo":
+        print("Running Ed25519 Tamper Detection Demonstration...")
+        attestor = get_attestor()
+        proof = attestor.sign_report(
+            report_id="DEMO-REPORT-001",
+            content="Bearing P-101 temperature at 104.2°C exceeding threshold.",
+            sources=["Pump_P101_Maintenance.pdf", "CDU_Vibration_Telemetry.csv"],
+            extra_metadata={"equipment_id": "P-101", "classification": "confidential"},
+        )
+        res = EvidenceVerifier.simulate_tampering(proof, modified_text="Bearing P-101 temperature at 199.9°C exceeding threshold.")
+        print(json.dumps(res, indent=2))
+
