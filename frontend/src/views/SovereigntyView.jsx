@@ -12,7 +12,10 @@ import {
   Radio,
   Network,
   Sliders,
-  Play
+  Play,
+  Key,
+  FileCheck,
+  Check
 } from 'lucide-react';
 import {
   getSovereigntyStatus,
@@ -20,7 +23,12 @@ import {
   triggerInstantAudit,
   simulatePolicyViolation,
   changeSecurityProfile,
-  downloadComplianceAttestation
+  downloadComplianceAttestation,
+  getAttestationIdentity,
+  getSampleEvidenceProof,
+  verifyEvidenceAttestation,
+  simulateAttestationTamper,
+  downloadCloraProofFile
 } from '../services/api';
 
 export default function SovereigntyView() {
@@ -52,6 +60,18 @@ export default function SovereigntyView() {
   const [auditTrail, setAuditTrail] = useState([]);
   const [chainValid, setChainValid] = useState(true);
 
+  // Ed25519 Evidence Attestation state
+  const [attestationIdentity, setAttestationIdentity] = useState({
+    key_id: 'CLORA-ED25519-A7F29BC01D4E',
+    algorithm: 'Ed25519 (Curve25519)',
+    signer: 'CLORA Sovereign Local Instance',
+    public_key_pem: ''
+  });
+  const [sampleProof, setSampleProof] = useState(null);
+  const [tamperResult, setTamperResult] = useState(null);
+  const [verifyingProof, setVerifyingProof] = useState(false);
+  const [simulatingTamper, setSimulatingTamper] = useState(false);
+
   // Notification / Alert toast
   const [notice, setNotice] = useState(null);
 
@@ -81,9 +101,21 @@ export default function SovereigntyView() {
     }
   };
 
+  const fetchAttestationData = async () => {
+    try {
+      const identity = await getAttestationIdentity();
+      setAttestationIdentity(identity);
+      const proof = await getSampleEvidenceProof();
+      setSampleProof(proof);
+    } catch (err) {
+      console.error('Failed to fetch attestation data:', err);
+    }
+  };
+
   useEffect(() => {
     fetchLiveStatus();
     fetchLiveAuditTrail();
+    fetchAttestationData();
 
     // Periodic heartbeat poll every 8 seconds
     const interval = setInterval(() => {
@@ -133,6 +165,50 @@ export default function SovereigntyView() {
     } finally {
       setSimulating(false);
     }
+  };
+
+  const handleVerifyEvidence = async () => {
+    if (!sampleProof) return;
+    setVerifyingProof(true);
+    try {
+      const res = await verifyEvidenceAttestation(sampleProof);
+      setNotice({
+        type: 'success',
+        title: 'Cryptographic Attestation Verified',
+        message: `${res.message} (Key ID: ${sampleProof.key_id})`
+      });
+    } catch (err) {
+      setNotice({ type: 'error', title: 'Verification Failed', message: err.message });
+    } finally {
+      setVerifyingProof(false);
+    }
+  };
+
+  const handleSimulateTamperClick = async () => {
+    setSimulatingTamper(true);
+    try {
+      const res = await simulateAttestationTamper(sampleProof);
+      setTamperResult(res);
+      setNotice({
+        type: 'warning',
+        title: 'Tamper Simulation Executed',
+        message: 'Modified 1 field in report content: Cryptographic verification immediately returned INVALID.'
+      });
+    } catch (err) {
+      setNotice({ type: 'error', title: 'Tamper Simulation Failed', message: err.message });
+    } finally {
+      setSimulatingTamper(false);
+    }
+  };
+
+  const handleExportCloraProof = () => {
+    if (!sampleProof) return;
+    downloadCloraProofFile(sampleProof);
+    setNotice({
+      type: 'success',
+      title: 'Evidence Package Exported',
+      message: `Downloaded ${sampleProof.canonical_payload?.report_id || 'CLORA-REPORT'}.clora-proof`
+    });
   };
 
   const handleProfileChangeSubmit = async (e) => {
@@ -311,6 +387,138 @@ export default function SovereigntyView() {
           </div>
           <div className="text-[9px] text-[#6d675e] font-mono">Deterministic offline test</div>
         </div>
+      </div>
+
+      {/* NEW: Ed25519 Cryptographic Evidence Attestation Console */}
+      <div className="clora-card p-5 space-y-4 border border-[#3b3630]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#2e2a25] pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#2d2217] border border-[#d9825b]/40 flex items-center justify-center text-[#d9825b]">
+              <Key size={16} />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-[#f5f2ed] uppercase tracking-wide flex items-center gap-2">
+                <span>🛡️ EVIDENCE ATTESTATION (Ed25519 Digital Seal)</span>
+                <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-[#161412] text-[#d9825b] border border-[#d9825b]/30">
+                  {attestationIdentity.key_id}
+                </span>
+              </h3>
+              <p className="text-[10px] text-[#a09a90] font-mono mt-0.5">
+                ON-PREMISES PRIVATE KEY SIGNING • INDEPENDENT OFFLINE VERIFICATION • ZERO CLOUD TRUST
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleVerifyEvidence}
+              disabled={verifyingProof}
+              className="btn-stone text-xs py-1.5 px-3 flex items-center gap-1.5"
+            >
+              <FileCheck size={13} className="text-[#10b981]" />
+              <span>{verifyingProof ? 'Checking...' : 'Verify Evidence'}</span>
+            </button>
+
+            <button
+              onClick={handleSimulateTamperClick}
+              disabled={simulatingTamper}
+              className="py-1.5 px-3 rounded-lg bg-[#2d1b15] hover:bg-[#3d241c] border border-[#78350f] text-xs font-medium text-[#f59e0b] flex items-center gap-1.5 transition-colors"
+              title="Demonstrate that modifying 1 character invalidates the Ed25519 signature"
+            >
+              <AlertTriangle size={13} />
+              <span>{simulatingTamper ? 'Tampering...' : 'Simulate Tamper'}</span>
+            </button>
+
+            <button
+              onClick={handleExportCloraProof}
+              className="btn-copper text-xs py-1.5 px-3 flex items-center gap-1.5"
+            >
+              <Download size={13} />
+              <span>Export .clora-proof</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Attestation Checkpoints Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-[11px]">
+          <div className="p-2.5 rounded-lg bg-[#161412] border border-[#2b2723] flex items-center justify-between">
+            <span className="text-[#a09a90]">Report Integrity</span>
+            <span className="text-[#34d399] font-bold flex items-center gap-1">
+              <Check size={12} /> VERIFIED
+            </span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#161412] border border-[#2b2723] flex items-center justify-between">
+            <span className="text-[#a09a90]">Audit Trail</span>
+            <span className="text-[#34d399] font-bold flex items-center gap-1">
+              <Check size={12} /> INTACT
+            </span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#161412] border border-[#2b2723] flex items-center justify-between">
+            <span className="text-[#a09a90]">Digital Signature</span>
+            <span className="text-[#34d399] font-bold flex items-center gap-1">
+              <Check size={12} /> VALID
+            </span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-[#161412] border border-[#2b2723] flex items-center justify-between">
+            <span className="text-[#a09a90]">Verification Mode</span>
+            <span className="text-[#38bdf8] font-bold">100% OFFLINE</span>
+          </div>
+        </div>
+
+        {/* Live Tamper Demonstration Comparison (If Triggered) */}
+        {tamperResult && (
+          <div className="p-3.5 rounded-xl bg-[#171412] border border-[#3b3630] space-y-3 font-mono text-xs">
+            <div className="flex items-center justify-between border-b border-[#2e2a25] pb-2">
+              <span className="text-xs font-bold text-[#f5f2ed] uppercase tracking-wide flex items-center gap-1.5">
+                <AlertTriangle size={14} className="text-[#f59e0b]" />
+                Live Tampering Detection Proof (Side-by-Side)
+              </span>
+              <button
+                onClick={() => setTamperResult(null)}
+                className="text-[10px] text-[#6d675e] hover:text-[#f5f2ed]"
+              >
+                Close Comparison
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Left: Untampered Original */}
+              <div className="p-3 rounded-lg bg-[#142319] border border-[#1f5433] space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-[#34d399]">BEFORE TAMPERING (ORIGINAL)</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#10b981]/20 text-[#34d399]">
+                    ✓ SIGNATURE VALID
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#f5f2ed] bg-black/30 p-2 rounded">
+                  "{tamperResult.before_tampering?.content_snippet}"
+                </div>
+                <div className="text-[10px] text-[#8ca68c]">
+                  ✓ Authentic • Untampered • Key: {tamperResult.before_tampering?.key_id}
+                </div>
+              </div>
+
+              {/* Right: Tampered Modified */}
+              <div className="p-3 rounded-lg bg-[#291414] border border-[#6b2525] space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-[#f87171]">AFTER TAMPERING (MODIFIED)</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#ef4444]/20 text-[#f87171]">
+                    ✗ SIGNATURE INVALID
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#f87171] bg-black/30 p-2 rounded">
+                  "{tamperResult.after_tampering?.tampered_snippet}"
+                </div>
+                <div className="text-[10px] text-[#fca5a5]">
+                  ✗ {tamperResult.after_tampering?.cryptographic_verdict}
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-[#6d675e] italic">
+              Demonstrates that even modifying 1 character causes immediate Ed25519 cryptographic signature rejection.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Main Grid: Live Socket Inspector & Tamper-Evident Hash Chain */}

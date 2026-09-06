@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     AIRGAP_AUDIT_INTERVAL_SEC: float = 5.0
     AIRGAP_LOG_PATH: Path = Path("./storage/airgap_proof_log.jsonl")
     AIRGAP_ATTESTATION_PATH: Path = Path("./storage/CLORA_NETWORK_COMPLIANCE_ATTESTATION.txt")
+    KEYS_DIR: Path = Path("./storage/keys")
 
     ALLOWED_EXTENSIONS: list[str] = [
         ".pdf",

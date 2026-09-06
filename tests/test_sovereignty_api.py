@@ -87,6 +87,52 @@ class TestSovereigntyApi(unittest.TestCase):
         self.assertIn("NETWORK COMPLIANCE", content)
         self.assertIn("Level A (Application Egress Guard)", content)
 
+    def test_attestation_identity_endpoint(self):
+        res = client.get("/api/sovereignty/attestation/identity")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["key_id"].startswith("CLORA-ED25519-"))
+        self.assertIn("BEGIN PUBLIC KEY", data["public_key_pem"])
+        self.assertEqual(data["algorithm"], "Ed25519 (Curve25519)")
+
+    def test_sign_and_verify_endpoints(self):
+        # 1. Sign
+        sign_res = client.post(
+            "/api/sovereignty/attestation/sign",
+            json={
+                "report_id": "TEST-RPT-001",
+                "content": "Bearing temperature normal at 65.4°C.",
+                "sources": ["Telemetry.csv"],
+                "model": "qwen2.5:3b (Local)",
+            },
+        )
+        self.assertEqual(sign_res.status_code, 200)
+        proof = sign_res.json()
+        self.assertIn("signature", proof)
+        self.assertIn("content_sha256", proof)
+
+        # 2. Verify untouched
+        verify_res = client.post("/api/sovereignty/attestation/verify", json=proof)
+        self.assertEqual(verify_res.status_code, 200)
+        self.assertTrue(verify_res.json()["valid"])
+        self.assertEqual(verify_res.json()["status"], "SIGNATURE_VALID")
+
+        # 3. Verify tampered
+        proof["canonical_payload"]["content"] = "Bearing temperature breached 199.9°C."
+        tamper_verify_res = client.post("/api/sovereignty/attestation/verify", json=proof)
+        self.assertEqual(tamper_verify_res.status_code, 200)
+        self.assertFalse(tamper_verify_res.json()["valid"])
+        self.assertEqual(tamper_verify_res.json()["status"], "SIGNATURE_INVALID")
+
+    def test_simulate_tamper_endpoint(self):
+        res = client.post("/api/sovereignty/attestation/simulate-tamper")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["before_tampering"]["valid"])
+        self.assertFalse(data["after_tampering"]["valid"])
+        self.assertEqual(data["after_tampering"]["status"], "SIGNATURE_INVALID_CONTENT_MODIFIED")
+
 
 if __name__ == "__main__":
     unittest.main()
+

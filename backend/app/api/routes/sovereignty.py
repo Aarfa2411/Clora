@@ -205,3 +205,122 @@ def get_compliance_attestation():
 def get_sovereignty_certificate():
     """Backward-compatible endpoint returning the verified compliance attestation."""
     return get_compliance_attestation()
+
+
+# ---------------------------------------------------------------------------
+# Ed25519 Cryptographic Evidence Attestation Endpoints
+# ---------------------------------------------------------------------------
+
+class SignReportRequest(BaseModel):
+    report_id: str = Field("CLORA-RPT-001", description="Unique identifier for the report")
+    content: str = Field(..., min_length=1, description="Report content to cryptographically sign")
+    sources: Optional[List[str]] = Field(default_factory=list, description="Associated evidence source documents")
+    model: str = Field("qwen2.5:3b (Local Offline)", description="Local model used for generation")
+
+
+@router.get(
+    "/sovereignty/attestation/identity",
+    summary="Get Local Ed25519 Signing Identity & Public Key",
+)
+def get_attestation_identity():
+    """
+    Returns CLORA's local Ed25519 signing identity and exportable public key.
+    The corresponding private key strictly remains on-premises and is never exposed.
+    """
+    from security.attestation import get_key_manager
+    km = get_key_manager(str(settings.KEYS_DIR))
+    return {
+        "key_id": km.get_key_id(),
+        "algorithm": "Ed25519 (Curve25519)",
+        "signer": "CLORA Sovereign Local Instance (MRPL SIH26117)",
+        "public_key_pem": km.get_public_key_pem(),
+        "storage_mode": "ON_PREMISES_SECURE_STORAGE",
+        "verification_mode": "OFFLINE_STANDALONE",
+    }
+
+
+@router.post(
+    "/sovereignty/attestation/sign",
+    summary="Cryptographically Sign Report with Local Ed25519 Key",
+)
+def sign_report_endpoint(req: SignReportRequest):
+    """
+    Creates a canonical deterministic payload and signs it using CLORA's local Ed25519 private key.
+    Returns a verifiable .clora-proof package.
+    """
+    from security.attestation import get_attestor
+    attestor = get_attestor(str(settings.KEYS_DIR))
+    proof = attestor.sign_report(
+        report_id=req.report_id,
+        content=req.content,
+        sources=req.sources,
+        model=req.model,
+    )
+    return proof
+
+
+@router.post(
+    "/sovereignty/attestation/verify",
+    summary="Independently Verify .clora-proof Package",
+)
+def verify_attestation_endpoint(proof_package: Dict[str, Any]):
+    """
+    Independently verifies the integrity and Ed25519 digital signature of a .clora-proof package.
+    Detects if even a single character was modified after signing.
+    """
+    from security.attestation import EvidenceVerifier
+    valid, message, details = EvidenceVerifier.verify_proof(proof_package)
+    return {
+        "valid": valid,
+        "status": "SIGNATURE_VALID" if valid else "SIGNATURE_INVALID",
+        "message": message,
+        "details": details,
+        "verification_mode": "INDEPENDENT_CRYPTOGRAPHIC_CHECK",
+    }
+
+
+@router.post(
+    "/sovereignty/attestation/simulate-tamper",
+    summary="Simulate Content Tampering Live Demo",
+)
+def simulate_attestation_tamper(
+    proof_package: Optional[Dict[str, Any]] = None,
+    modified_text: str = "Inboard roller bearing temperature reached 199.9°C (CRITICAL EXCURSION)",
+):
+    """
+    Live demonstration tool for evaluators and auditors.
+    Compares cryptographic verification before and after modifying report content,
+    demonstrating that even changing 1 character causes immediate signature rejection.
+    """
+    from security.attestation import EvidenceVerifier, get_attestor
+
+    if not proof_package:
+        attestor = get_attestor(str(settings.KEYS_DIR))
+        proof_package = attestor.sign_report(
+            report_id="CLORA-RPT-DEMO-001",
+            content="Inboard roller bearing temperature reached 104.2°C, exceeding 80.0°C threshold.",
+            sources=["Pump_P101_Maintenance.pdf", "CDU_Vibration_Telemetry.csv"],
+            model="qwen2.5:3b (Local Quantized)",
+        )
+
+    return EvidenceVerifier.simulate_tampering(proof_package, modified_text=modified_text)
+
+
+@router.get(
+    "/sovereignty/attestation/sample-proof",
+    summary="Get Sample Signed .clora-proof Package",
+)
+def get_sample_proof():
+    """Returns a ready-to-verify sample evidence package for testing."""
+    from security.attestation import get_attestor
+    attestor = get_attestor(str(settings.KEYS_DIR))
+    return attestor.sign_report(
+        report_id="CLORA-RPT-SAMPLE-001",
+        content=(
+            "Verified operational finding: Lube oil pressure dropped to 0.4 bar at 14:15:00Z. "
+            "Inboard roller bearing temperature subsequently reached 104.2°C."
+        ),
+        sources=["Pump_P101_Maintenance.pdf", "CDU_Vibration_Telemetry.csv"],
+        model="qwen2.5:3b (Local Offline)",
+    )
+

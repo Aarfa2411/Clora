@@ -1,7 +1,8 @@
 """
 Security & Audit Package for INDUSAI-X (SIH PS 26117).
 Contains RBAC permission enforcement, thread-safe SHA-256 audit logging,
-air-gap network verification, egress enforcement, and network sentinel.
+air-gap network verification, egress enforcement, network sentinel,
+and Ed25519 cryptographic evidence attestation.
 """
 
 from .rbac import (
@@ -33,6 +34,14 @@ from .network_proof import (
     get_background_auditor,
 )
 
+from .attestation import (
+    Ed25519KeyManager,
+    EvidenceAttestor,
+    EvidenceVerifier,
+    get_key_manager,
+    get_attestor,
+)
+
 __all__ = [
     "ROLE_PERMISSIONS",
     "check_permission",
@@ -51,4 +60,9 @@ __all__ = [
     "BackgroundNetworkAuditor",
     "get_sentinel",
     "get_background_auditor",
+    "Ed25519KeyManager",
+    "EvidenceAttestor",
+    "EvidenceVerifier",
+    "get_key_manager",
+    "get_attestor",
 ]

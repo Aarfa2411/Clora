@@ -43,8 +43,10 @@ async def lifespan(app: FastAPI):
         NetworkTrustProfile,
         get_sentinel,
         get_background_auditor,
+        get_key_manager,
     )
 
+    get_key_manager(str(settings.KEYS_DIR))
     sentinel = get_sentinel(str(settings.AIRGAP_LOG_PATH))
     try:
         profile_enum = NetworkTrustProfile(settings.AIRGAP_PROFILE)
