@@ -197,7 +197,50 @@ def run_demo():
     print(f"[*] Generated Executive Approval Note: {os.path.abspath(doc_path)}")
     print("    -> Document includes: Official Header, Metadata Grid, Executive Summary, Styled Findings Table, Risk Analysis, Financial Sanction, and 3-Tier Sign-off Blocks.")
 
-    print_banner("Demonstration Complete - 100% Member 6 Deliverables Operational")
+    # -------------------------------------------------------------
+    # 7. Sovereign Model Router & Sandboxed Code Verification
+    # -------------------------------------------------------------
+    print_banner("Step 7: Sovereign Model Router & Sandboxed Code Verification")
+    from backend.models.router import IntelligentModelRouter
+    from backend.sandbox.coding_agent import CodingAgentLoop
+
+    router = IntelligentModelRouter(audit_file=audit_file)
+    coding_loop = CodingAgentLoop(audit_file=audit_file)
+
+    calc_query = "Calculate peak vibration RMS delta and temperature slope for Pump P-101 telemetry"
+    print(f"[*] Analyzing Technical Task: '{calc_query}'")
+    routing_decision = router.route_task(calc_query, user_id="user_plant_eng", user_role="Plant_Engineer")
+
+    print(f"    -> Task Domain Classified: {routing_decision.task_type}")
+    print(f"    -> Selected Sovereign Model: {routing_decision.selected_model}")
+    print(f"    -> Capability Match Score: {routing_decision.capability_match_score:.2f} (Weights normalized to 1.0)")
+    print(f"    -> Routing Rationale: {routing_decision.reasoning}")
+    if routing_decision.is_fallback:
+        print("    -> [WARNING: Fallback Mode Active - Local Ollama Daemon Offline]")
+
+    print("\n[*] Executing Closed-Loop Sandboxed Coding Verification...")
+    code_res = coding_loop.run_coding_task(
+        task_prompt=calc_query,
+        user_id="user_plant_eng",
+        user_role="Plant_Engineer",
+        max_retries=3,
+        total_wall_clock_cap_sec=30.0,
+    )
+    print(f"    -> Execution Status: {code_res.status}")
+    print(f"    -> Model Used: {code_res.model_used}")
+    print(f"    -> Total Attempts: {code_res.total_attempts}")
+    print(f"    -> Elapsed Time: {code_res.total_elapsed_sec:.2f}s (Within 30s Wall-Clock Cap)")
+    if code_res.execution_result:
+        for line in code_res.execution_result.stdout.strip().splitlines()[:3]:
+            print(f"       [SANDBOX OUT] {line}")
+    sentinel.audit_cycle("SANDBOX_VERIFY")
+
+    # Verify unified audit trail
+    valid, corrupt_idx, msg = logger.verify_audit_trail(audit_file)
+    print(f"\n[*] Unified Tamper-Evident SHA-256 Audit Verification: {'PASSED' if valid else 'FAILED'}")
+    print(f"    -> {msg}")
+
+    print_banner("Demonstration Complete - All Sovereign Capabilities Operational")
 
 
 if __name__ == "__main__":

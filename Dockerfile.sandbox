@@ -1,0 +1,38 @@
+# Sovereign Hardened Execution Sandbox for INDUSAI-X
+# SIH26117 / MRPL
+# Security Controls:
+# - Minimal Python 3.11 base
+# - No database drivers (NO duckdb, NO sqlite3 CLI, NO psycopg2)
+# - Writable cache paths routed into tmpfs (/tmp)
+# - Unprivileged user 10001:10001
+
+FROM python:3.11-slim
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Essential analytics libraries only
+RUN pip install --no-cache-dir \
+    pandas==2.2.2 \
+    numpy==1.26.4 \
+    matplotlib==3.8.4 \
+    scipy==1.13.1
+
+# Configure runtime cache directories into tmpfs
+ENV MPLCONFIGDIR=/tmp/matplotlib
+ENV PYTHONPYCACHEPREFIX=/tmp/pycache
+ENV HOME=/tmp
+
+# Create unprivileged runtime user
+RUN groupadd -g 10001 sandboxgroup && \
+    useradd -u 10001 -g sandboxgroup -s /bin/false -m -d /tmp sandboxuser
+
+# Prepare workspace mount points
+RUN mkdir -p /workspace/input /workspace/output && \
+    chmod 755 /workspace && \
+    chmod 777 /workspace/output
+
+WORKDIR /workspace
+USER 10001:10001
+
+ENTRYPOINT ["python", "-u"]

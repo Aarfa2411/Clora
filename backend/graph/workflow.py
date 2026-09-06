@@ -10,20 +10,28 @@ from backend.agents.investigation_agent import InvestigationAgent
 from backend.agents.planner import PlannerAgent
 from backend.agents.rag_agent import RAGAgent
 from backend.graph.state import AgentState
+from backend.models.router import IntelligentModelRouter, default_router
 from backend.rag.chroma_store import ChromaEvidenceStore
 from backend.rag.evidence import Evidence, EvidencePack
+from backend.sandbox.coding_agent import CodingAgentLoop, default_coding_loop
 from backend.verification.claim_extractor import ClaimExtractor
 from backend.verification.guardrails import HallucinationGuardrail
 from backend.verification.verifier import EvidenceVerifier
 
 
-def build_workflow(store: Optional[ChromaEvidenceStore] = None):
+def build_workflow(
+    store: Optional[ChromaEvidenceStore] = None,
+    router: Optional[IntelligentModelRouter] = None,
+    coding_loop: Optional[CodingAgentLoop] = None,
+):
     planner = PlannerAgent()
     rag = RAGAgent(store=store)
     investigator = InvestigationAgent()
     extractor = ClaimExtractor()
     verifier = EvidenceVerifier()
     guardrail = HallucinationGuardrail()
+    model_router = router or default_router
+    code_agent = coding_loop or default_coding_loop
 
     from security.network_proof import get_sentinel
     sentinel = get_sentinel()
@@ -32,14 +40,33 @@ def build_workflow(store: Optional[ChromaEvidenceStore] = None):
         query = state.get("user_query", "")
         intent = planner.route_query(query)
         plan = planner.plan_workflow(intent)
+        
+        # Route model dynamically
+        user_id = state.get("user_id", "operator")
+        user_role = state.get("user_role", "maintenance_engineer")
+        routing = model_router.route_task(query, user_id=user_id, user_role=user_role)
+
         audit_log = list(state.get("audit_log", []))
-        audit_log.append({"event": "query_routed", "intent": intent, "plan": plan})
+        audit_log.append({
+            "event": "query_routed",
+            "intent": intent,
+            "plan": plan,
+            "selected_model": routing.selected_model,
+            "match_score": routing.capability_match_score,
+            "is_fallback": routing.is_fallback,
+        })
 
         # Cryptographic air-gap checkpoint
         proof = sentinel.audit_cycle("AGENT_PLANNING_OFFLINE", {"intent": intent})
         audit_log.append({"event": "airgap_checkpoint", "stage": "AGENT_PLANNING_OFFLINE", "hash": proof.get("entry_hash")})
 
-        return {"intent": intent, "plan": plan, "audit_log": audit_log, "airgap_proof_hash": proof.get("entry_hash")}
+        return {
+            "intent": intent,
+            "plan": plan,
+            "model_routing": routing.model_dump(),
+            "audit_log": audit_log,
+            "airgap_proof_hash": proof.get("entry_hash"),
+        }
 
     def retrieve_evidence(state: AgentState) -> Dict[str, Any]:
         query = state.get("user_query", "")
@@ -202,10 +229,34 @@ def build_workflow(store: Optional[ChromaEvidenceStore] = None):
             "evidence_attestation": attestation,
         }
 
+    def execute_sandbox_code(state: AgentState) -> Dict[str, Any]:
+        routing = state.get("model_routing", {})
+        query = state.get("user_query", "")
+        if routing.get("task_type") == "code_execution" or state.get("code_task"):
+            res = code_agent.run_coding_task(
+                task_prompt=query,
+                user_id=state.get("user_id", "user"),
+                user_role=state.get("user_role", "maintenance_engineer"),
+            )
+            audit_log = list(state.get("audit_log", []))
+            audit_log.append({
+                "event": "sandbox_code_executed",
+                "status": res.status,
+                "model_used": res.model_used,
+                "success": res.success,
+            })
+            return {
+                "code_verification_result": res.model_dump(),
+                "sandbox_output_files": res.execution_result.generated_files if res.execution_result else [],
+                "audit_log": audit_log,
+            }
+        return {}
+
     # Assemble StateGraph
     graph = StateGraph(AgentState)
     graph.add_node("router", route_and_plan)
     graph.add_node("retrieve", retrieve_evidence)
+    graph.add_node("sandbox_code", execute_sandbox_code)
     graph.add_node("investigate", cross_correlate)
     graph.add_node("synthesize", synthesize_answer)
     graph.add_node("verify", verify_claims)
@@ -213,7 +264,8 @@ def build_workflow(store: Optional[ChromaEvidenceStore] = None):
 
     graph.add_edge(START, "router")
     graph.add_edge("router", "retrieve")
-    graph.add_edge("retrieve", "investigate")
+    graph.add_edge("retrieve", "sandbox_code")
+    graph.add_edge("sandbox_code", "investigate")
     graph.add_edge("investigate", "synthesize")
     graph.add_edge("synthesize", "verify")
     graph.add_edge("verify", "guardrail")

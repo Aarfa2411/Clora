@@ -15,5 +15,3 @@ api_router.include_router(agents.router)
 api_router.include_router(audit.router)
 api_router.include_router(sovereignty.router)
 api_router.include_router(ai_router, prefix="/ai", tags=["Member 4: Local LLM Inference"])
-
-
