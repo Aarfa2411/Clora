@@ -1,8 +1,9 @@
-# INDUSAI-X (Clora): Sovereign On-Premise Industrial Agentic AI Workbench
+# CLORA: Sovereign On-Premise Industrial Agentic AI Workbench
 
 **SIH26117 | Mangalore Refinery and Petrochemicals Limited (MRPL)**  
 *Theme: Smart Automation | Type: Software | Category: Critical Operational Technology (OT)*
 
+<<<<<<< HEAD
 [![CI](https://github.com/M0izz/Clora/actions/workflows/ci.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/ci.yml)
 [![Tests](https://github.com/M0izz/Clora/actions/workflows/tests.yml/badge.svg)](https://github.com/M0izz/Clora/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -44,6 +45,12 @@
 ## Executive Summary
 
 **INDUSAI-X** (codenamed **Clora**) is a sovereign, air-gappable industrial AI workbench engineered specifically for confidential refinery, petrochemical, and critical Operational Technology (OT) environments. Unlike commercial cloud AI wrappers that expose proprietary telemetry and maintenance logs over public networks, INDUSAI-X operates **100% on local, open-weight foundation models and embedded local databases**.
+=======
+
+## Executive Summary
+
+**CLORA**  is a sovereign, air-gappable industrial AI workbench engineered specifically for confidential refinery, petrochemical, and critical OT (Operational Technology) operations. Unlike public cloud AI wrappers, INDUSAI-X operates **entirely on local, open-weight foundation models and embedded local databases**, enforcing data sovereignty while automating root cause investigations, SOP retrieval, telemetry analytics, and multi-source engineering analysis.
+>>>>>>> c23a92580c3571af82ff08bc668fd16f3ec042e1
 
 ### Core Engineering Capabilities:
 1. **Application-Level Egress Enforcement (`AirGapEnforcer`)**: Synchronous socket-level interceptor hooking Python's `socket.socket.connect`, blocking non-whitelisted outbound network connections before TCP handshakes occur across three configurable Network Trust Profiles (`STRICT_AIRGAP`, `INDUSTRIAL_LAN`, `DEVELOPMENT`).
