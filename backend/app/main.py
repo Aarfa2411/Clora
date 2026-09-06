@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -32,9 +33,40 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
+    # 4. Air-Gap & Sovereignty Sentinel Initialization
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
+    from security import (
+        AirGapEnforcer,
+        NetworkTrustProfile,
+        get_sentinel,
+        get_background_auditor,
+    )
+
+    sentinel = get_sentinel(str(settings.AIRGAP_LOG_PATH))
+    try:
+        profile_enum = NetworkTrustProfile(settings.AIRGAP_PROFILE)
+    except Exception:
+        profile_enum = NetworkTrustProfile.STRICT_AIRGAP
+
+    AirGapEnforcer.activate(
+        profile=profile_enum,
+        approved_cidrs=settings.AIRGAP_APPROVED_CIDRS,
+        on_violation=lambda ip, port, prof: sentinel.log_violation(
+            ip, port, f"Blocked unauthorized outbound connection under {prof} policy."
+        ),
+    )
+
+    auditor = get_background_auditor(interval_sec=settings.AIRGAP_AUDIT_INTERVAL_SEC)
+    auditor.start()
+
     yield
 
-    # Teardown logic if needed
+    # Teardown: Stop auditor and deactivate enforcer
+    auditor.stop()
+    AirGapEnforcer.deactivate()
 
 
 def create_app() -> FastAPI:
