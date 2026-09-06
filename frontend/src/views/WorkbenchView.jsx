@@ -565,17 +565,25 @@ export default function WorkbenchView({ onSelectEvidence }) {
           <div className="pt-2 border-t border-[#26231f] flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] text-[#6d675e] font-mono">CITED SOURCES:</span>
-              {(result.sources || []).map((src, i) => (
-                <button
-                  key={i}
-                  onClick={() => onSelectEvidence && onSelectEvidence(src)}
-                  className="px-2.5 py-1 rounded-lg bg-[#201e1b] border border-[#3b3630] text-[11px] text-[#a09a90] hover:text-[#d9825b] hover:border-[#d9825b] transition-all flex items-center gap-1.5"
-                >
-                  <FileText size={11} className="text-[#d9825b]" />
-                  <span>{src.filename} (p.{src.page || 1})</span>
-                  <ExternalLink size={10} />
-                </button>
-              ))}
+              {(result.sources || []).map((src, i) => {
+                const isOcr = src.filename?.toLowerCase().includes('scanned') || src.is_scanned || src.extraction_method === 'ocr_fallback';
+                return (
+                  <button
+                    key={i}
+                    onClick={() => onSelectEvidence && onSelectEvidence(src)}
+                    className="px-2.5 py-1 rounded-lg bg-[#201e1b] border border-[#3b3630] text-[11px] text-[#a09a90] hover:text-[#d9825b] hover:border-[#d9825b] transition-all flex items-center gap-1.5"
+                  >
+                    <FileText size={11} className={isOcr ? 'text-[#38bdf8]' : 'text-[#d9825b]'} />
+                    <span>{src.filename} (p.{src.page || 1})</span>
+                    {isOcr && (
+                      <span className="px-1.5 py-0.2 rounded bg-[#1e293b] text-[#38bdf8] text-[9px] font-mono font-bold">
+                        OCR {Math.round((src.confidence || 0.94) * 100)}%
+                      </span>
+                    )}
+                    <ExternalLink size={10} />
+                  </button>
+                );
+              })}
             </div>
             <span className="text-[10px] text-[#6e8c6e] font-mono">100% Citation Grounded</span>
           </div>

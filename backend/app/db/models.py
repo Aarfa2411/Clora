@@ -77,6 +77,10 @@ class File(Base):
     )  # uploaded, processing, indexed, failed
     uploaded_by = Column(String(36), nullable=True)
     error_message = Column(Text, nullable=True)
+    is_scanned = Column(Integer, default=0)  # 1 if document contains scanned pages
+    ocr_confidence = Column(Integer, nullable=True)  # Mean OCR confidence percentage (0-100)
+    extraction_method = Column(String(50), default="native_text")  # native_text, ocr_fallback, hybrid
+    needs_review = Column(Integer, default=0)  # 1 if human review is flagged
     created_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     workspace = relationship("Workspace", back_populates="files")
@@ -171,6 +175,10 @@ class IngestionJob(Base):
     )  # QUEUED, PROCESSING, INDEXING, COMPLETED, FAILED
     progress = Column(Integer, nullable=False, default=0)  # 0 to 100
     chunks_count = Column(Integer, nullable=True, default=0)
+    is_scanned = Column(Integer, default=0)
+    ocr_confidence = Column(Integer, nullable=True)
+    extraction_method = Column(String(50), default="native_text")
+    needs_review = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)

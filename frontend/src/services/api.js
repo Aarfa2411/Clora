@@ -96,3 +96,46 @@ export function getSovereignMockResponse(question) {
     ]
   };
 }
+
+export async function fetchOcrPreview(pdfPath, pageNumber = 1, dpi = 150, autoDeskew = true) {
+  try {
+    const res = await fetch(`${API_BASE}/api/member6/ocr/preview-page`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdf_path: pdfPath,
+        page_number: pageNumber,
+        dpi: dpi,
+        auto_deskew: autoDeskew
+      })
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('OCR preview API fallback:', err);
+  }
+  return null;
+}
+
+export async function reprocessOcr(pdfPath, dpi = 250, autoDeskew = true, psmMode = 3) {
+  try {
+    const res = await fetch(`${API_BASE}/api/member6/ocr/re-process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdf_path: pdfPath,
+        dpi: dpi,
+        auto_deskew: autoDeskew,
+        psm_mode: psmMode
+      })
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('OCR reprocess API fallback:', err);
+  }
+  return null;
+}
+

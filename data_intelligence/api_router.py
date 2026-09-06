@@ -43,11 +43,34 @@ if os.path.exists(csv_sample):
     tabular_engine.load_csv("telemetry", csv_sample)
 
 
+import base64
+import io
+import pymupdf as fitz
+from .ocr_pipeline import ImagePreprocessor, TesseractOCREngine, SpatialTableReconstructor, OCRQualityAssessor
+
 # -------------------------------------------------------------
 # Request & Response Pydantic Schemas
 # -------------------------------------------------------------
 class ExtractDocRequest(BaseModel):
     pdf_path: str = Field(..., description="Path to digital or scanned PDF")
+    auto_deskew: bool = Field(True, description="Enable automatic skew detection & rotation")
+    dpi: int = Field(200, ge=72, le=600, description="DPI for rasterization & OCR")
+    actor_id: str = "user_engineer"
+    role: str = "Plant_Engineer"
+
+class OCRPagePreviewRequest(BaseModel):
+    pdf_path: str = Field(..., description="Path to PDF document")
+    page_number: int = Field(1, ge=1, description="1-indexed page number to preview")
+    dpi: int = Field(150, ge=72, le=300, description="Preview rasterization DPI")
+    auto_deskew: bool = Field(True, description="Apply deskewing")
+    actor_id: str = "user_engineer"
+    role: str = "Plant_Engineer"
+
+class OCRReprocessRequest(BaseModel):
+    pdf_path: str = Field(..., description="Path to PDF document")
+    dpi: int = Field(250, ge=72, le=600, description="High-accuracy DPI")
+    auto_deskew: bool = Field(True, description="Apply deskewing")
+    psm_mode: int = Field(3, description="Tesseract PSM mode (3=Auto, 6=Block, 11=Sparse)")
     actor_id: str = "user_engineer"
     role: str = "Plant_Engineer"
 
@@ -87,9 +110,95 @@ def extract_document(req: ExtractDocRequest):
     if not os.path.exists(req.pdf_path):
         raise HTTPException(status_code=404, detail=f"File not found: {req.pdf_path}")
 
-    result = extractor.extract(req.pdf_path)
-    audit_logger.log(req.actor_id, req.role, "read_document", req.pdf_path, "SUCCESS", {"pages": result.total_pages})
+    result = extractor.extract(req.pdf_path, auto_deskew=req.auto_deskew, dpi=req.dpi)
+    action_type = "run_ocr" if result.primary_method in ["ocr_fallback", "hybrid"] else "read_document"
+    audit_logger.log(
+        req.actor_id,
+        req.role,
+        action_type,
+        req.pdf_path,
+        "SUCCESS",
+        {
+            "pages": result.total_pages,
+            "primary_method": result.primary_method,
+            "ocr_confidence": result.overall_ocr_confidence,
+            "needs_review": result.needs_human_review
+        }
+    )
     sentinel.audit_cycle("EXTRACT_DOCUMENT")
+    return result.to_dict()
+
+
+@router.post("/ocr/preview-page")
+def preview_ocr_page(req: OCRPagePreviewRequest):
+    """
+    Renders a specific page to base64 image along with word-level OCR bounding boxes and tables.
+    Used by the Frontend OCR Inspector modal.
+    """
+    enforce_permission(req.role, "read_document")
+    if not os.path.exists(req.pdf_path):
+        raise HTTPException(status_code=404, detail=f"File not found: {req.pdf_path}")
+
+    doc = fitz.open(req.pdf_path)
+    if req.page_number < 1 or req.page_number > len(doc):
+        doc.close()
+        raise HTTPException(status_code=400, detail=f"Page number {req.page_number} out of range (1-{len(doc)})")
+
+    page = doc[req.page_number - 1]
+    raw_img = ImagePreprocessor.rasterize_page(page, dpi=req.dpi)
+    doc.close()
+
+    enhanced_img, skew_angle = ImagePreprocessor.deskew_and_enhance(
+        raw_img,
+        auto_deskew=req.auto_deskew,
+        enhance_contrast=True,
+        denoise=True
+    )
+
+    zoom = req.dpi / 72.0
+    text, tables, blocks, mean_conf, word_boxes, needs_review, reason, tier = extractor.ocr_engine.process_image(
+        enhanced_img,
+        psm=3,
+        zoom_ratio=zoom
+    )
+
+    # Encode enhanced image as base64 JPEG
+    buffered = io.BytesIO()
+    enhanced_img.save(buffered, format="JPEG", quality=85)
+    img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+    return {
+        "page_number": req.page_number,
+        "image_base64": f"data:image/jpeg;base64,{img_b64}",
+        "width": enhanced_img.width,
+        "height": enhanced_img.height,
+        "skew_angle_deg": skew_angle,
+        "ocr_confidence": mean_conf,
+        "needs_human_review": needs_review,
+        "extracted_text": text,
+        "word_boxes": word_boxes,
+        "reconstructed_tables": tables
+    }
+
+
+@router.post("/ocr/re-process")
+def reprocess_ocr(req: OCRReprocessRequest):
+    """
+    Re-processes a document with customized OCR hyperparameters (DPI, deskew, PSM).
+    """
+    enforce_permission(req.role, "read_document")
+    if not os.path.exists(req.pdf_path):
+        raise HTTPException(status_code=404, detail=f"File not found: {req.pdf_path}")
+
+    result = extractor.extract(req.pdf_path, auto_deskew=req.auto_deskew, dpi=req.dpi)
+    audit_logger.log(
+        req.actor_id,
+        req.role,
+        "reprocess_ocr",
+        req.pdf_path,
+        "SUCCESS",
+        {"dpi": req.dpi, "auto_deskew": req.auto_deskew, "overall_conf": result.overall_ocr_confidence}
+    )
     return result.to_dict()
 
 

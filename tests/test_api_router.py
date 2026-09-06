@@ -76,6 +76,37 @@ class TestApiRouter(unittest.TestCase):
         data = response.json()
         self.assertTrue(data["is_airgapped"])
 
+    def test_ocr_preview_page_endpoint(self):
+        pdf_path = os.path.join("samples", "sample_inspection_digital.pdf")
+        response = client.post("/api/member6/ocr/preview-page", json={
+            "pdf_path": pdf_path,
+            "page_number": 1,
+            "dpi": 150,
+            "auto_deskew": True,
+            "actor_id": "eng_1",
+            "role": "Plant_Engineer"
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["page_number"], 1)
+        self.assertIn("image_base64", data)
+        self.assertTrue(data["image_base64"].startswith("data:image/jpeg;base64,"))
+        self.assertIn("extracted_text", data)
+
+    def test_ocr_reprocess_endpoint(self):
+        pdf_path = os.path.join("samples", "sample_inspection_digital.pdf")
+        response = client.post("/api/member6/ocr/re-process", json={
+            "pdf_path": pdf_path,
+            "dpi": 200,
+            "auto_deskew": True,
+            "psm_mode": 3,
+            "actor_id": "eng_1",
+            "role": "Plant_Engineer"
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["primary_method"], "native_text")
+
 
 if __name__ == "__main__":
     unittest.main()
