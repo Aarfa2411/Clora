@@ -25,13 +25,21 @@ def build_workflow(store: Optional[ChromaEvidenceStore] = None):
     verifier = EvidenceVerifier()
     guardrail = HallucinationGuardrail()
 
+    from security.network_proof import get_sentinel
+    sentinel = get_sentinel()
+
     def route_and_plan(state: AgentState) -> Dict[str, Any]:
         query = state.get("user_query", "")
         intent = planner.route_query(query)
         plan = planner.plan_workflow(intent)
         audit_log = list(state.get("audit_log", []))
         audit_log.append({"event": "query_routed", "intent": intent, "plan": plan})
-        return {"intent": intent, "plan": plan, "audit_log": audit_log}
+
+        # Cryptographic air-gap checkpoint
+        proof = sentinel.audit_cycle("AGENT_PLANNING_OFFLINE", {"intent": intent})
+        audit_log.append({"event": "airgap_checkpoint", "stage": "AGENT_PLANNING_OFFLINE", "hash": proof.get("entry_hash")})
+
+        return {"intent": intent, "plan": plan, "audit_log": audit_log, "airgap_proof_hash": proof.get("entry_hash")}
 
     def retrieve_evidence(state: AgentState) -> Dict[str, Any]:
         query = state.get("user_query", "")
@@ -164,11 +172,34 @@ def build_workflow(store: Optional[ChromaEvidenceStore] = None):
         audit_log = list(state.get("audit_log", []))
         audit_log.append({"event": "guardrail_applied", "status": formatted["guardrail_status"]})
 
+        # Cryptographic air-gap synthesis checkpoint
+        final_proof = sentinel.audit_cycle("AGENT_FINAL_SYNTHESIS_OFFLINE", {"status": formatted["guardrail_status"]})
+        audit_log.append({"event": "airgap_checkpoint", "stage": "AGENT_FINAL_SYNTHESIS_OFFLINE", "hash": final_proof.get("entry_hash")})
+
+        # Ed25519 Cryptographic Evidence Attestation
+        from security.attestation import get_attestor
+        attestor = get_attestor()
+        sources_list = [e.source_document for e in evidence_objs]
+        attestation = attestor.sign_report(
+            report_id=f"RPT-{final_proof.get('entry_hash', '0')[:8]}",
+            content=formatted["answer"],
+            sources=sources_list,
+            extra_metadata={"confidence": conf, "guardrail_status": formatted["guardrail_status"]},
+        )
+        audit_log.append({
+            "event": "evidence_attested",
+            "key_id": attestation.get("key_id"),
+            "content_sha256": attestation.get("content_sha256"),
+            "signature_snippet": attestation.get("signature", "")[:16] + "...",
+        })
+
         return {
             "final_answer": formatted["answer"],
             "draft_answer": formatted["answer"],
             "guardrail_status": formatted["guardrail_status"],
             "audit_log": audit_log,
+            "airgap_proof_hash": final_proof.get("entry_hash"),
+            "evidence_attestation": attestation,
         }
 
     # Assemble StateGraph

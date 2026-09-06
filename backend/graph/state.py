@@ -29,3 +29,5 @@ class AgentState(TypedDict, total=False):
 
     final_answer: str
     audit_log: list
+    airgap_proof_hash: str
+    evidence_attestation: dict
