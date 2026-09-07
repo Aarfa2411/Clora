@@ -34,6 +34,17 @@ class TestPdfExtractor(unittest.TestCase):
         self.assertGreater(res.total_pages, 0)
         self.assertEqual(len(res.pages), 1)
         self.assertTrue(res.pages[0].extraction_method == "ocr_fallback")
+        self.assertEqual(res.scanned_page_count, 1)
+        self.assertEqual(res.digital_page_count, 0)
+        self.assertIsNotNone(res.chunks)
+        self.assertGreater(len(res.chunks), 0)
+        self.assertEqual(res.chunks[0].source_document, "sample_inspection_scanned.pdf")
+
+    def test_top_level_extract_pdf(self):
+        from data_intelligence.pdf_extractor import extract_pdf
+        res = extract_pdf(self.digital_pdf)
+        self.assertEqual(res.primary_method, "native_text")
+        self.assertEqual(res.digital_page_count, 1)
 
     def test_table_reconstruction_from_ocr_data(self):
         mock_ocr_data = {

@@ -29,3 +29,12 @@ class AgentState(TypedDict, total=False):
 
     final_answer: str
     audit_log: list
+    airgap_proof_hash: str
+    evidence_attestation: dict
+
+    # Multi-Model Routing & Sandboxed Coding Task Extensions
+    model_routing: dict
+    code_task: dict
+    code_verification_result: dict
+    calculation_result: dict
+    sandbox_output_files: list

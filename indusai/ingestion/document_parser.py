@@ -61,6 +61,29 @@ class DocumentParser:
     def _parse_pdf(self, file_path: str) -> List[ParsedSection]:
         sections: List[ParsedSection] = []
         try:
+            from data_intelligence.pdf_extractor import extract_pdf
+            res = extract_pdf(file_path)
+            for page in res.pages:
+                page_sections = self._extract_sections_from_page(page.text, page.page_number)
+                # If page had reconstructed tables, append them
+                if page.tables:
+                    for t_idx, table in enumerate(page.tables):
+                        table_str = "\n".join(" | ".join(row) for row in table)
+                        eqs = list(set(EQUIPMENT_ID_REGEX.findall(table_str)))
+                        page_sections.append(ParsedSection(
+                            title=f"Table {t_idx + 1} (Page {page.page_number})",
+                            page=page.page_number,
+                            content=table_str,
+                            tables=[table_str],
+                            equipment_ids=eqs
+                        ))
+                sections.extend(page_sections)
+            return sections
+        except Exception:
+            pass
+
+        # Native PyMuPDF fallback
+        try:
             import fitz  # PyMuPDF
             doc = fitz.open(file_path)
             for page_num in range(len(doc)):
@@ -69,23 +92,14 @@ class DocumentParser:
                 page_sections = self._extract_sections_from_page(text, page_num + 1)
                 sections.extend(page_sections)
             doc.close()
-        except ImportError:
-            # Fallback if PyMuPDF fails
-            try:
-                import pypdf
-                reader = pypdf.PdfReader(file_path)
-                for page_num, page in enumerate(reader.pages):
-                    text = page.extract_text() or ""
-                    page_sections = self._extract_sections_from_page(text, page_num + 1)
-                    sections.extend(page_sections)
-            except Exception as e:
-                sections.append(ParsedSection(
-                    title="Document Content",
-                    page=1,
-                    content=f"Error reading PDF: {e}",
-                    tables=[],
-                    equipment_ids=[]
-                ))
+        except Exception as e:
+            sections.append(ParsedSection(
+                title="Document Content",
+                page=1,
+                content=f"Error reading PDF: {e}",
+                tables=[],
+                equipment_ids=[]
+            ))
         return sections
 
     def _parse_docx(self, file_path: str) -> List[ParsedSection]:

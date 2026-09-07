@@ -87,15 +87,37 @@ async def process_ingestion_job(job_id: str) -> None:
         await asyncio.sleep(0.05)
 
         # 2. Extract Document Content via Member 6 or built-in parser
+        is_scanned = 0
+        ocr_confidence = None
+        extraction_method = "native_text"
+        needs_review = 0
+        structured_chunks = []
+
         if file_path.exists():
             ext = file_path.suffix.lower()
             if ext == ".pdf":
                 try:
                     from data_intelligence.pdf_extractor import extract_pdf
                     res = extract_pdf(str(file_path))
-                    extracted_text = res.raw_text if hasattr(res, "raw_text") else str(res)
-                except Exception:
-                    # Fallback PyMuPDF extraction
+                    extracted_text = res.full_text
+                    is_scanned = 1 if res.primary_method in ["ocr_fallback", "hybrid"] else 0
+                    ocr_confidence = int(res.overall_ocr_confidence) if res.overall_ocr_confidence is not None else None
+                    extraction_method = res.primary_method
+                    needs_review = 1 if res.needs_human_review else 0
+
+                    if res.chunks:
+                        structured_chunks = [
+                            {
+                                "chunk_id": c.chunk_id,
+                                "content": c.text,
+                                "page_number": c.page_number,
+                                "block_type": c.block_type,
+                                "ocr_confidence": c.ocr_confidence
+                            }
+                            for c in res.chunks
+                        ]
+                except Exception as e:
+                    logger.warning("Dual-engine PDF extraction encountered error: %s. Using PyMuPDF fallback.", e)
                     try:
                         import fitz
                         doc = fitz.open(file_path)
@@ -115,6 +137,16 @@ async def process_ingestion_job(job_id: str) -> None:
         else:
             extracted_text = f"Metadata entry for {file_record.filename}"
 
+        # Update OCR metadata on records
+        file_record.is_scanned = is_scanned
+        file_record.ocr_confidence = ocr_confidence
+        file_record.extraction_method = extraction_method
+        file_record.needs_review = needs_review
+
+        job.is_scanned = is_scanned
+        job.ocr_confidence = ocr_confidence
+        job.extraction_method = extraction_method
+        job.needs_review = needs_review
         job.progress = 50
         db.commit()
 
@@ -123,19 +155,22 @@ async def process_ingestion_job(job_id: str) -> None:
         job.progress = 65
         db.commit()
 
-        # Chunking: Attempt Member 5 chunker or fallback section splitter
-        try:
-            from backend.rag.chunking import SectionAwareChunker
-            chunker = SectionAwareChunker(chunk_size=settings.INGESTION_CHUNK_SIZE, overlap=settings.INGESTION_CHUNK_OVERLAP)
-            chunks = chunker.chunk_document(extracted_text, document_id=file_record.id, filename=file_record.filename)
-        except Exception:
-            # Clean deterministic fallback chunker
-            lines = extracted_text.splitlines()
-            step = 10
-            for i in range(0, max(len(lines), 1), step):
-                chunk_content = "\n".join(lines[i : i + step]).strip()
-                if chunk_content:
-                    chunks.append({"chunk_id": f"{file_record.id}_{i}", "content": chunk_content})
+        if structured_chunks:
+            chunks = structured_chunks
+        else:
+            # Chunking: Attempt Member 5 chunker or fallback section splitter
+            try:
+                from backend.rag.chunking import SectionAwareChunker
+                chunker = SectionAwareChunker(chunk_size=settings.INGESTION_CHUNK_SIZE, overlap=settings.INGESTION_CHUNK_OVERLAP)
+                chunks = chunker.chunk_document(extracted_text, document_id=file_record.id, filename=file_record.filename)
+            except Exception:
+                # Clean deterministic fallback chunker
+                lines = extracted_text.splitlines()
+                step = 10
+                for i in range(0, max(len(lines), 1), step):
+                    chunk_content = "\n".join(lines[i : i + step]).strip()
+                    if chunk_content:
+                        chunks.append({"chunk_id": f"{file_record.id}_{i}", "content": chunk_content, "page_number": 1})
 
         job.chunks_count = len(chunks) or 1
         job.progress = 85
@@ -152,7 +187,7 @@ async def process_ingestion_job(job_id: str) -> None:
                         evidence_id=f"ev_{file_record.id}_{idx}",
                         content=c.get("content", str(c)) if isinstance(c, dict) else str(c),
                         source_document=file_record.filename,
-                        page_number=1,
+                        page_number=c.get("page_number", 1) if isinstance(c, dict) else 1,
                         chunk_id=c.get("chunk_id", f"c_{idx}") if isinstance(c, dict) else f"c_{idx}",
                     )
                     for idx, c in enumerate(chunks)

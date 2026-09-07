@@ -196,3 +196,52 @@ class RefineryKnowledgeGraph:
                 }
             })
         return {"nodes": nodes, "edges": edges}
+
+    def add_provenance_relationship(
+        self,
+        source_id: str,
+        target_id: str,
+        relation: str,
+        provenance: Dict[str, Any],
+        is_validated: bool = True
+    ) -> bool:
+        """
+        Adds a directed edge backed by strict visual/drawing provenance.
+        Only validated edges are ingested into the live reasoning graph.
+        """
+        if not is_validated:
+            return False
+
+        if source_id not in self.graph:
+            self.add_entity(source_id, "PipingComponent", {"name": source_id})
+        if target_id not in self.graph:
+            self.add_entity(target_id, "PipingComponent", {"name": target_id})
+
+        props = {
+            "provenance_source": provenance.get("source_drawing", "Unknown_P&ID"),
+            "grid_location": provenance.get("grid", provenance.get("source_grid", "Unknown")),
+            "confidence": provenance.get("confidence", "HIGH"),
+            "extraction_method": provenance.get("extraction_method", "drawing_multimodal"),
+            "is_validated": True
+        }
+        self.add_relationship(source_id, target_id, relation, props)
+        return True
+
+    def ingest_drawing_edges(self, edges: List[Any]) -> int:
+        """
+        Ingests a batch of PipingEdge models with provenance tracking.
+        Returns the number of validated edges added.
+        """
+        count = 0
+        for edge in edges:
+            src = getattr(edge, "source_tag", None) or edge.get("source_tag")
+            tgt = getattr(edge, "target_tag", None) or edge.get("target_tag")
+            rel = "FEEDS_INTO" if (getattr(edge, "flow_direction", "") == "FORWARD") else "PARALLEL_BYPASS_WITH"
+            prov = getattr(edge, "provenance", {}) or edge.get("provenance", {})
+            val = getattr(edge, "is_validated", True)
+
+            if src and tgt:
+                if self.add_provenance_relationship(src, tgt, rel, prov, is_validated=val):
+                    count += 1
+        return count
+

@@ -119,6 +119,16 @@ class EvidenceVerifier:
                     if bigram in ev_text:
                         overlap += 0.15
 
+            # Numerical claim corroboration with adaptive tolerance
+            has_nums = bool(re.findall(r"[-+]?\d*\.\d+|\d+", claim_clean))
+            num_matched, num_score = self._match_numerical_claim(claim_clean, ev)
+            if num_matched:
+                overlap = max(overlap, num_score)
+            elif has_nums and (ev.metadata and "final_value" in ev.metadata or re.findall(r"[-+]?\d*\.\d+|\d+", ev.content)):
+                # If claim contains specific numerical assertions and this evidence has conflicting numbers,
+                # prevent text word overlap from falsely marking the claim as fully supported.
+                overlap = min(overlap, 0.45)
+
             overlap = min(1.0, overlap)
             if overlap > best_score:
                 best_score = overlap
@@ -131,6 +141,41 @@ class EvidenceVerifier:
 
         is_unsupported_causal_leap = has_causal_phrase and not causal_confirmed_in_text
         return round(best_score, 4), matching_ids, is_unsupported_causal_leap
+
+    def _match_numerical_claim(self, claim_clean: str, ev: Evidence) -> Tuple[bool, float]:
+        """Checks if numerical assertions in claim match evidence numbers within adaptive tolerance."""
+        claim_nums = [float(x) for x in re.findall(r"[-+]?\d*\.\d+|\d+", claim_clean) if len(x) > 0]
+        if not claim_nums:
+            return False, 0.0
+
+        ev_nums = [float(x) for x in re.findall(r"[-+]?\d*\.\d+|\d+", ev.content) if len(x) > 0]
+        if not ev_nums:
+            return False, 0.0
+
+        rel_tol = 0.005  # 0.5% relative tolerance
+        abs_tol = 0.05   # 0.05 absolute tolerance
+
+        # 1. Match against structured metadata if available
+        if ev.metadata and "final_value" in ev.metadata and ev.metadata["final_value"] is not None:
+            target_val = float(ev.metadata["final_value"])
+            for c_num in claim_nums:
+                tol = max(abs_tol, rel_tol * max(abs(c_num), abs(target_val)))
+                if abs(c_num - target_val) <= tol:
+                    return True, 0.95
+
+        # 2. General numbers matching
+        matches = 0
+        for c_num in claim_nums:
+            for e_num in ev_nums:
+                tol = max(abs_tol, rel_tol * max(abs(c_num), abs(e_num)))
+                if abs(c_num - e_num) <= tol:
+                    matches += 1
+                    break
+
+        if matches > 0:
+            score = min(1.0, 0.5 + (matches / len(claim_nums)) * 0.5)
+            return True, score
+        return False, 0.0
 
     def contradicts_evidence(self, claim_text: str, evidence: List[Evidence]) -> Tuple[bool, str]:
         claim_lower = claim_text.lower()
