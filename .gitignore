@@ -30,12 +30,16 @@ htmlcov/
 .tox/
 .nox/
 
-# Storage & SQLite
+# Storage & SQLite / Vector DB
 storage/
 backend/storage/
+data/chroma/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 *.log
 
 # Environment variables & secrets
