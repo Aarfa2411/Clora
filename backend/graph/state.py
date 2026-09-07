@@ -36,4 +36,5 @@ class AgentState(TypedDict, total=False):
     model_routing: dict
     code_task: dict
     code_verification_result: dict
+    calculation_result: dict
     sandbox_output_files: list

@@ -137,7 +137,7 @@ class RestrictedHostExecutor:
         env["INDUSAI_SANDBOX_INPUT"] = in_dir
         env["INDUSAI_SANDBOX_OUTPUT"] = out_dir
         env["MPLCONFIGDIR"] = out_dir
-        env["PYTHONPYCACHEPREFIX"] = out_dir
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
         return env
 
@@ -262,8 +262,11 @@ class RestrictedHostExecutor:
         found = []
         if os.path.exists(output_dir):
             for root, _, files in os.walk(output_dir):
+                if "__pycache__" in root:
+                    continue
                 for f in files:
-                    found.append(os.path.join(root, f))
+                    if not f.endswith(".pyc") and not f.endswith(".pyo"):
+                        found.append(os.path.join(root, f))
         return found
 
 

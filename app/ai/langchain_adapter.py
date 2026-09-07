@@ -196,6 +196,60 @@ TOOL_SCHEMAS: dict[str, dict] = {
             },
         },
     },
+    "calculate": {
+        "type": "function",
+        "function": {
+            "name": "calculate",
+            "description": "Execute auditable local engineering calculation (e.g. Reynolds number, LMTD, friction factor, telemetry aggregates)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "calculation_type": {
+                        "type": "string",
+                        "enum": [
+                            "reynolds_number",
+                            "lmtd_counterflow",
+                            "darcy_friction_factor",
+                            "vibration_rms_severity",
+                            "tabular_telemetry",
+                            "custom_simulation",
+                        ],
+                        "description": "The category or formula ID for the calculation",
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "description": "Key-value input parameters required for the formula or query",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Contextual description of the engineering calculation task",
+                    },
+                },
+                "required": ["calculation_type", "parameters"],
+            },
+        },
+    },
+    "query_tabular_telemetry": {
+        "type": "function",
+        "function": {
+            "name": "query_tabular_telemetry",
+            "description": "Safely query sensor telemetry data via in-memory DuckDB engine with mathematical aggregates",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sql_query": {
+                        "type": "string",
+                        "description": "Read-only SQL query using permitted math/aggregate functions (AVG, STDDEV, MAX, POW, SQRT)",
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "Target in-memory table (defaults to 'telemetry')",
+                    },
+                },
+                "required": ["sql_query"],
+            },
+        },
+    },
 }
 
 

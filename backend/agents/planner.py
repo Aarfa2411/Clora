@@ -10,7 +10,9 @@ class PlannerAgent:
 
     def route_query(self, query: str) -> str:
         q_lower = query.lower()
-        if any(
+        if any(w in q_lower for w in ["calculate", "compute", "calc", "reynolds", "lmtd", "friction factor", "rms", "telemetry math"]):
+            return "calculation"
+        elif any(
             w in q_lower
             for w in [
                 "why",
@@ -33,7 +35,15 @@ class PlannerAgent:
         return "knowledge_query"
 
     def plan_workflow(self, intent: str) -> List[str]:
-        if intent == "root_cause_investigation":
+        if intent == "calculation":
+            return [
+                "calculation_gateway:execute_computation",
+                "investigation_agent:cross_correlate_sources",
+                "synthesizer:draft_findings",
+                "verifier:verify_claims",
+                "guardrail:firewall",
+            ]
+        elif intent == "root_cause_investigation":
             return [
                 "rag_agent:retrieve_maintenance_records",
                 "investigation_agent:cross_correlate_sources",

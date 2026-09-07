@@ -29,7 +29,7 @@ ALLOWED_SQL_FUNCTIONS = {
     # Aggregates
     "AVG", "COUNT", "SUM", "MIN", "MAX", "STDDEV", "VARIANCE", "MEDIAN", "MODE",
     # Math
-    "ROUND", "ABS", "CEIL", "FLOOR", "SQRT", "POWER", "MOD",
+    "ROUND", "ABS", "CEIL", "FLOOR", "SQRT", "POWER", "POW", "MOD", "LN", "LOG", "EXP",
     # String
     "LOWER", "UPPER", "TRIM", "LTRIM", "RTRIM", "LENGTH", "SUBSTRING", "CONCAT", "REPLACE", "LIKE", "ILIKE",
     # Date & Time

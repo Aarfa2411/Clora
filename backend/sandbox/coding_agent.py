@@ -34,12 +34,22 @@ from backend.sandbox.sandbox_manager import (
 )
 
 
+from backend.calculation.schemas import (
+    CalculationConfidenceLevel,
+    CalculationPhase,
+    CalculationSourceType,
+    CalculationStep,
+    StructuredCalculationResult,
+)
+
+
 class CodingTaskResult(BaseModel):
     success: bool
     status: str
     execution_id: str = ""
     final_code: str = ""
     execution_result: Optional[SecBoxExecutionResult] = None
+    calculation_result: Optional[StructuredCalculationResult] = None
     runtime_tier: str = "HARDENED_CONTAINER"
     execution_mode: str = "CONTAINER"
     code_executed: bool = True
@@ -246,12 +256,15 @@ class CodingAgentLoop:
                     policy=active_policy,
                 )
 
+                calc_result = self._extract_calculation_result(exec_res, execution_id)
+
                 result = CodingTaskResult(
                     success=True,
                     status="VERIFIED_SUCCESS" if exec_res.code_executed else "SIMULATED_SUCCESS",
                     execution_id=execution_id,
                     final_code=current_code,
                     execution_result=exec_res,
+                    calculation_result=calc_result,
                     runtime_tier=exec_res.runtime_tier.value,
                     execution_mode=exec_res.execution_mode,
                     code_executed=exec_res.code_executed,
@@ -333,6 +346,21 @@ class CodingAgentLoop:
         except Exception:
             return {}
 
+    def _extract_calculation_result(
+        self, exec_res: SecBoxExecutionResult, execution_id: str
+    ) -> Optional[StructuredCalculationResult]:
+        """Extracts and validates machine-readable calculation_result.json if produced."""
+        import os
+        for path in exec_res.generated_files:
+            if path.endswith("calculation_result.json") and os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    return StructuredCalculationResult(**data)
+                except Exception:
+                    pass
+        return None
+
     def _generate_initial_code(self, model_id: str, task_prompt: str) -> str:
         prompt = (
             f"Write a self-contained Python script to solve the following industrial engineering task:\n"
@@ -341,7 +369,9 @@ class CodingAgentLoop:
             f"- Use only standard libraries or pandas/numpy/matplotlib.\n"
             f"- If reading data, load from '/workspace/input/telemetry.csv'.\n"
             f"- If generating charts, save to '/workspace/output/chart.png'.\n"
-            f"- Print key findings to stdout.\n"
+            f"- For calculations, write machine-readable output to '/workspace/output/calculation_result.json' "
+            f"containing 'calculation_name', 'final_metric', 'final_value', 'unit', and 'steps'.\n"
+            f"- Print key findings and intermediate steps to stdout.\n"
             f"Return ONLY executable Python code."
         )
         res = self.runtime.generate(model_id, prompt=prompt, max_tokens=512)
