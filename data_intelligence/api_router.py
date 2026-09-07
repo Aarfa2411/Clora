@@ -267,3 +267,26 @@ def get_airgap_proof():
         "status": "PASS",
         "certificate_file": os.path.abspath(cert_path)
     }
+
+
+class VisionAnalyzeRequest(BaseModel):
+    workspace_id: str
+    question: str
+    drawing_path: Optional[str] = None
+
+
+@router.post("/vision/analyze")
+def analyze_vision_diagram(req: VisionAnalyzeRequest):
+    """Inspects P&ID and diagram drawings according to frozen API contract."""
+    from backend.agents.vision_agent import VisionDiagramAgent
+    agent = VisionDiagramAgent()
+    res = agent.analyze(
+        question=req.question,
+        drawing_path=req.drawing_path,
+        drawing_metadata={"id": "img-pid-cool-01", "filename": "PID_Cooling_Water_Circuit_P101.png"}
+    )
+    return {
+        "workspace_id": req.workspace_id,
+        "citations": res.get("citations", [])
+    }
+

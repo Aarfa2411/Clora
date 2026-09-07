@@ -4,13 +4,37 @@ Intelligence Backbone Package.
 """
 
 from indusai.config import settings
-from indusai.agents.graph import IndusAIGraph
-from indusai.storage.vector_store import ChromaVectorStore
-from indusai.ingestion.schema import ChunkMetadata, Chunk, IngestedDocument
-from indusai.ingestion.chunker import IntelligentChunker
-from indusai.ingestion.document_parser import DocumentParser
-from indusai.verification.verifier import EvidenceVerifier
-from indusai.evaluation.metrics import Evaluator
+
+try:
+    from indusai.agents.graph import IndusAIGraph
+except ImportError:
+    IndusAIGraph = None  # type: ignore
+
+try:
+    from indusai.storage.vector_store import ChromaVectorStore
+except ImportError:
+    ChromaVectorStore = None  # type: ignore
+
+try:
+    from indusai.ingestion.schema import ChunkMetadata, Chunk, IngestedDocument
+    from indusai.ingestion.chunker import IntelligentChunker
+    from indusai.ingestion.document_parser import DocumentParser
+except ImportError:
+    ChunkMetadata = None  # type: ignore
+    Chunk = None  # type: ignore
+    IngestedDocument = None  # type: ignore
+    IntelligentChunker = None  # type: ignore
+    DocumentParser = None  # type: ignore
+
+try:
+    from indusai.verification.verifier import EvidenceVerifier
+except ImportError:
+    EvidenceVerifier = None  # type: ignore
+
+try:
+    from indusai.evaluation.metrics import Evaluator
+except ImportError:
+    Evaluator = None  # type: ignore
 
 __version__ = "1.0.0"
 __all__ = [
@@ -25,3 +49,4 @@ __all__ = [
     "EvidenceVerifier",
     "Evaluator"
 ]
+
