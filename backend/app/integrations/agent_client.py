@@ -121,16 +121,21 @@ class AgentClient:
             "Lube oil pressure dropped to 0.4 bar at 14:15:00Z prior to thermal runaway.",
         ]
 
+        query_status = "SUCCESS"
         if self.tabular_engine:
             try:
                 # Query in-memory table if populated
-                sql_res = self.tabular_engine.execute_query(
-                    "SELECT timestamp, bearing_temp_c, vibration_rms FROM telemetry WHERE bearing_temp_c > 80 ORDER BY timestamp DESC LIMIT 3"
+                sql_query = (
+                    "SELECT timestamp, bearing_temp_c, vibration_rms FROM telemetry "
+                    "WHERE bearing_temp_c > 80 ORDER BY timestamp DESC LIMIT 3"
                 )
-                if sql_res and "rows" in sql_res and sql_res["rows"]:
-                    findings = [f"SQL Telemetry Excursion: {r}" for r in sql_res["rows"]]
-            except Exception:
-                pass  # Use domain findings fallback
+                dict_rows, _ = self.tabular_engine.query(sql_query)
+                if dict_rows:
+                    findings = [f"SQL Telemetry Excursion: {r}" for r in dict_rows]
+            except Exception as e:
+                logger.warning("Tabular query execution error: %s", e)
+                query_status = "QUERY_FAILED"
+                # Keep domain findings fallback for offline demo baseline
 
         return {
             "findings": findings,

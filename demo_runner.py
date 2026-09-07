@@ -227,9 +227,15 @@ def run_demo():
         total_wall_clock_cap_sec=30.0,
     )
     print(f"    -> Execution Status: {code_res.status}")
+    print(f"    -> Runtime Tier: {code_res.runtime_tier} (Mode: {code_res.execution_mode})")
+    print(f"    -> Code Executed: {code_res.code_executed}")
+    print(f"    -> Risk Level: {code_res.risk_level}")
     print(f"    -> Model Used: {code_res.model_used}")
     print(f"    -> Total Attempts: {code_res.total_attempts}")
     print(f"    -> Elapsed Time: {code_res.total_elapsed_sec:.2f}s (Within 30s Wall-Clock Cap)")
+    if code_res.attestation_proof:
+        print(f"    -> Ed25519 Proof ID: {code_res.attestation_proof.get('proof_id')}")
+        print(f"    -> Signing Key ID: {code_res.attestation_proof.get('key_id')}")
     if code_res.execution_result:
         for line in code_res.execution_result.stdout.strip().splitlines()[:3]:
             print(f"       [SANDBOX OUT] {line}")

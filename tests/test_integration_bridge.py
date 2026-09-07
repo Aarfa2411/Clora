@@ -76,9 +76,10 @@ class TestRBACBridge:
 # ---------------------------------------------------------------------------
 
 class TestAuditBridge:
-    def test_log_event_and_verify(self):
+    def test_log_event_and_verify(self, tmp_path):
         from data_intelligence.integration_bridge import AuditBridge
-        bridge = AuditBridge()
+        temp_log = str(tmp_path / "bridge_audit.jsonl")
+        bridge = AuditBridge(log_path=temp_log)
         # Log two events
         bridge.log_event("rag_retrieval", "Plant_Engineer", {"query": "P-102A failure"})
         bridge.log_event("guardrail_applied", "Admin", {"status": "PASS"})

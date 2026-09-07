@@ -107,6 +107,41 @@ def build_workflow(
         return {"agent_outputs": agent_outputs}
 
     def synthesize_answer(state: AgentState) -> Dict[str, Any]:
+        calc_data = state.get("calculation_result")
+        if calc_data and calc_data.get("steps"):
+            calc_name = calc_data.get("calculation_name", "Calculation")
+            calc_src = calc_data.get("source_type", "AUDITABLE_LOCAL_COMPUTATION")
+            final_val = calc_data.get("final_value")
+            unit = calc_data.get("unit") or ""
+            metric = calc_data.get("final_metric") or calc_name
+            conf = calc_data.get("confidence", "HIGH")
+
+            findings = []
+            for s in calc_data.get("steps", []):
+                val_str = f" = {s.get('value')} {s.get('unit') or ''}".rstrip() if s.get('value') is not None else ""
+                findings.append(f"• [{s.get('phase')}] {s.get('title')}: {s.get('description')}{val_str} [Source: Auditable Local Computation ({calc_src})]")
+
+            analysis = (
+                f"• Computed {calc_name} yielded {metric} of {final_val} {unit}. "
+                f"Validation status: {calc_data.get('validation_status', 'VERIFIED_CONSISTENT')}. "
+                f"Evaluation conducted under sovereign {calc_src} tier."
+            )
+
+            draft = (
+                "ANSWER\n────────────────────────\nVerified Findings\n"
+                + "\n".join(findings)
+                + "\n\n"
+                "Analysis\n"
+                + analysis
+                + "\n\n"
+                "Uncertainty\n"
+                + (f"• Confidence rationale: {calc_data.get('confidence_rationale')}" if calc_data.get('confidence_rationale') else "• No operational uncertainty detected.")
+                + "\n\n"
+                f"Confidence: {conf}\n\nEvidence\n"
+                + f"[1] Auditable Local Computation ({calc_src}) — {calc_name} [ID: {calc_data.get('calculation_id', 'CALC-01')}]"
+            )
+            return {"draft_answer": draft}
+
         evidence = state.get("evidence", [])
         if not evidence:
             draft = (
@@ -233,21 +268,36 @@ def build_workflow(
         routing = state.get("model_routing", {})
         query = state.get("user_query", "")
         if routing.get("task_type") == "code_execution" or state.get("code_task"):
-            res = code_agent.run_coding_task(
-                task_prompt=query,
+            from backend.calculation.gateway import default_calculation_gateway
+            calc_res = default_calculation_gateway.calculate(
+                query=query,
                 user_id=state.get("user_id", "user"),
                 user_role=state.get("user_role", "maintenance_engineer"),
             )
+            calc_evidence = calc_res.to_evidence()
+
+            ev_list = list(state.get("evidence", []))
+            ev_list.insert(0, calc_evidence.to_dict())
+
+            ret_docs = list(state.get("retrieved_docs", []))
+            ret_docs.insert(0, calc_evidence.to_dict())
+
             audit_log = list(state.get("audit_log", []))
             audit_log.append({
-                "event": "sandbox_code_executed",
-                "status": res.status,
-                "model_used": res.model_used,
-                "success": res.success,
+                "event": "calculation_executed",
+                "calculation_name": calc_res.calculation_name,
+                "source_type": calc_res.source_type.value,
+                "confidence": calc_res.confidence.value,
+                "verified": calc_res.verified,
+                "final_value": calc_res.final_value,
+                "unit": calc_res.unit,
             })
             return {
-                "code_verification_result": res.model_dump(),
-                "sandbox_output_files": res.execution_result.generated_files if res.execution_result else [],
+                "code_verification_result": calc_res.model_dump(),
+                "calculation_result": calc_res.model_dump(),
+                "evidence": ev_list,
+                "retrieved_evidence": ev_list,
+                "retrieved_docs": ret_docs,
                 "audit_log": audit_log,
             }
         return {}
@@ -264,7 +314,14 @@ def build_workflow(
 
     def should_route_to_sandbox(state: AgentState) -> str:
         routing = state.get("model_routing", {})
-        if routing.get("task_type") == "code_execution" or state.get("code_task"):
+        intent = state.get("intent", "")
+        query = state.get("user_query", "").lower()
+        if (
+            routing.get("task_type") == "code_execution"
+            or intent == "calculation"
+            or any(k in query for k in ["calculate", "compute", "reynolds", "lmtd", "friction factor"])
+            or state.get("code_task")
+        ):
             return "sandbox_code"
         return "investigate"
 

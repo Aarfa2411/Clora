@@ -190,9 +190,9 @@ class AuditBridge:
     Member 6 tamper-evident audit trail automatically.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, log_path: Optional[str] = None) -> None:
         from security.audit_trail import AuditLogger
-        self._logger = AuditLogger()
+        self._logger = AuditLogger(log_path or "audit_trail.jsonl")
 
     def log_event(
         self,
@@ -222,9 +222,7 @@ class AuditBridge:
     def verify_trail(self) -> Dict[str, Any]:
         """Returns integrity verification result for judge demo."""
         from security.audit_trail import AuditLogger
-        import os
-        log_path = os.path.join(os.getcwd(), "audit_trail.jsonl")
-        is_valid, corrupted_line, message = AuditLogger.verify_audit_trail(log_path)
+        is_valid, corrupted_line, message = AuditLogger.verify_audit_trail(self._logger.log_file_path)
         return {"is_valid": is_valid, "corrupted_line": corrupted_line, "message": message}
 
 
